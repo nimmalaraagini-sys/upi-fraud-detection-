@@ -1,0 +1,7 @@
+{
+  "name": "UPI Fraud Detector",
+  "description": "SafeUPI: Before you pay, SafeUPI quietly checks — and tells you in plain words if something feels off.",
+  "requestFramePermissions": ["camera"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
+
