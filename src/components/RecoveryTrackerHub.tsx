@@ -4,7 +4,7 @@ import {
   Printer, CheckCircle2, Clock, FileText, ChevronRight, AlertTriangle, 
   Landmark, ArrowUpRight, Copy, Check, PlusCircle 
 } from "lucide-react";
-import { TRANSLATIONS } from "../utils/translations";
+import { TRANSLATIONS, MULTI_TRANSLATIONS, SupportedLang } from "../utils/translations";
 
 export interface RecoveryCase {
   caseId: string;
@@ -20,8 +20,9 @@ export interface RecoveryCase {
 
 export const RecoveryTrackerHub: React.FC<{ 
   onOpenBankModal?: () => void;
-}> = ({ onOpenBankModal }) => {
-  const t = TRANSLATIONS;
+  currentLang?: SupportedLang;
+}> = ({ onOpenBankModal, currentLang = "en" }) => {
+  const t = MULTI_TRANSLATIONS[currentLang] || MULTI_TRANSLATIONS.en;
 
   const [cases, setCases] = useState<RecoveryCase[]>([
     {
@@ -51,11 +52,11 @@ export const RecoveryTrackerHub: React.FC<{
   const currentCase = cases[activeCaseIdx] || cases[0];
 
   const stages = [
-    { num: 1, title: "Incident Report Created", desc: "Structured incident details and digital timestamps prepared" },
-    { num: 2, title: "Bank Fraud Desk Contacted", desc: "Originating bank alerted to initiate UPI chargeback request" },
-    { num: 3, title: "1930 / Cyber Portal Submitted", desc: "National Cyber Crime Reporting Portal acknowledgement registered" },
-    { num: 4, title: "Nodal Officer Investigation", desc: "Destination beneficiary bank identifying and freezing mule accounts" },
-    { num: 5, title: "Lien Placed & Recovery", desc: "Judicial refund mandate / magistrate order for reverse credit" }
+    { num: 1, title: t.stage1ReportCreated, desc: currentLang === "te" ? "లావాదేవీ వివరాలు మరియు డిజిటల్ సాక్ష్యాలు రూపొందించబడ్డాయి" : "Structured incident details and digital timestamps prepared" },
+    { num: 2, title: t.stage2BankContacted, desc: currentLang === "te" ? "యూపీఐ రీఫండ్ / ఛార్జ్‌బ్యాక్ కోసం పంపిన బ్యాంక్‌ను హెచ్చరించారు" : "Originating bank alerted to initiate UPI chargeback request" },
+    { num: 3, title: t.stage3ComplaintSubmitted, desc: currentLang === "te" ? "జాతీయ సైబర్ క్రైమ్ రిపోర్టింగ్ పోర్టల్ (1930) అక్నాలెడ్జ్‌మెంట్ నమోదైంది" : "National Cyber Crime Reporting Portal acknowledgement registered" },
+    { num: 4, title: t.stage4Investigation, desc: currentLang === "te" ? "మోసపూరిత ఖాతాను గుర్తించి నోడల్ ఆఫీసర్ స్తంభింపజేస్తున్నారు" : "Destination beneficiary bank identifying and freezing mule accounts" },
+    { num: 5, title: t.stage5RecoveryUpdate, desc: currentLang === "te" ? "కోర్టు / బ్యాంక్ ఆదేశాలతో వెనక్కి జమ చేయడం" : "Judicial refund mandate / magistrate order for reverse credit" }
   ];
 
   const handleAdvanceStage = (caseIdx: number) => {
@@ -103,13 +104,17 @@ export const RecoveryTrackerHub: React.FC<{
           <div>
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-rose-500/20 border border-rose-400/30 text-rose-200 text-xs font-bold mb-2">
               <ShieldAlert className="w-3.5 h-3.5 text-rose-300" />
-              <span>Guided Recovery & Case Tracker</span>
+              <span>{t.recoveryTrackerTitle}</span>
             </div>
             <h2 className="text-xl sm:text-2xl font-extrabold tracking-tight">
-              UPI Money Recovery Tracker
+              {t.recoveryTrackerTitle}
             </h2>
             <p className="text-xs sm:text-sm text-rose-200/90 mt-1 max-w-xl">
-              Organize transaction evidence, file with Bank & 1930 Helpline, and track step-by-step account freeze progress.
+              {currentLang === "te" 
+                ? "లావాదేవీ ఆధారాలను సేకరించండి, బ్యాంక్ & 1930 హెల్ప్‌లైన్‌కు ఫిర్యాదు చేసి రికవరీ పురోగతిని ట్రాక్ చేయండి."
+                : currentLang === "hi"
+                ? "लेनदेन साक्ष्य व्यवस्थित करें, बैंक और 1930 हेल्पलाइन पर शिकायत करें और रिकवरी की प्रगति ट्रैक करें।"
+                : "Organize transaction evidence, file with Bank & 1930 Helpline, and track step-by-step account freeze progress."}
             </p>
           </div>
 
@@ -119,7 +124,7 @@ export const RecoveryTrackerHub: React.FC<{
             className="px-4 py-2.5 rounded-2xl bg-white hover:bg-rose-50 text-rose-950 font-bold text-xs shadow-sm flex items-center gap-2 transition-all cursor-pointer shrink-0"
           >
             <PlusCircle className="w-4 h-4 text-rose-700" />
-            <span>{isLoggingNew ? "View Active Cases" : "Report Lost Money"}</span>
+            <span>{isLoggingNew ? (currentLang === "te" ? "యాక్టివ్ కేసులు చూడండి" : "View Active Cases") : (currentLang === "te" ? "డబ్బు నష్టాన్ని నివేదించండి" : "Report Lost Money")}</span>
           </button>
         </div>
       </div>
@@ -257,7 +262,7 @@ export const RecoveryTrackerHub: React.FC<{
               className="px-3 py-1.5 rounded-xl border border-slate-200 hover:bg-slate-50 text-xs font-bold text-slate-700 flex items-center gap-1.5 cursor-pointer"
             >
               <Printer className="w-3.5 h-3.5 text-slate-600" />
-              <span>Print Police Complaint</span>
+              <span>{currentLang === "te" ? "పోలీస్ ఫిర్యాదు ముద్రించండి" : "Print Police Complaint"}</span>
             </button>
 
             <a
@@ -265,7 +270,7 @@ export const RecoveryTrackerHub: React.FC<{
               className="px-3 py-1.5 rounded-xl bg-rose-700 hover:bg-rose-800 text-white text-xs font-bold flex items-center gap-1.5 shadow-2xs"
             >
               <PhoneCall className="w-3.5 h-3.5" />
-              <span>Dial 1930</span>
+              <span>{currentLang === "te" ? "1930 కు కాల్ చేయండి" : "Dial 1930"}</span>
             </a>
           </div>
         </div>
@@ -273,7 +278,7 @@ export const RecoveryTrackerHub: React.FC<{
         {/* 5 Stages Stepper */}
         <div className="space-y-3">
           <span className="text-xs font-bold text-slate-700 uppercase tracking-wider block">
-            5-Stage Recovery Progress
+            {t.caseStatus} · 5 Stages
           </span>
 
           <div className="space-y-2.5">
@@ -306,7 +311,7 @@ export const RecoveryTrackerHub: React.FC<{
                         <span>{stage.title}</span>
                         {isCurrent && (
                           <span className="text-[10px] font-bold px-2 py-0.2 rounded-full bg-amber-200 text-amber-900 animate-pulse">
-                            In Progress
+                            {currentLang === "te" ? "ప్రక్రియలో ఉంది" : "In Progress"}
                           </span>
                         )}
                       </div>
@@ -322,7 +327,7 @@ export const RecoveryTrackerHub: React.FC<{
                       onClick={() => handleAdvanceStage(activeCaseIdx)}
                       className="px-2.5 py-1 rounded-xl bg-slate-900 hover:bg-black text-white text-[11px] font-bold shrink-0 cursor-pointer"
                     >
-                      Mark Completed
+                      {currentLang === "te" ? "పూర్తయినట్లు గుర్తించండి" : "Mark Completed"}
                     </button>
                   )}
                 </div>
@@ -334,28 +339,32 @@ export const RecoveryTrackerHub: React.FC<{
         {/* Reference & Evidence Details Box */}
         <div className="p-4 rounded-2xl bg-rose-50/40 border border-rose-100 space-y-2 font-mono text-xs text-slate-800">
           <div className="flex justify-between">
-            <span className="text-slate-500 font-sans">Bank Reference (UTR):</span>
+            <span className="text-slate-500 font-sans">{t.upiRefId}</span>
             <span className="font-bold text-slate-900">{currentCase.utrNumber}</span>
           </div>
           <div className="flex justify-between">
-            <span className="text-slate-500 font-sans">Debited Bank:</span>
+            <span className="text-slate-500 font-sans">{t.fromBankText}</span>
             <span className="font-medium text-slate-800">{currentCase.bankName}</span>
           </div>
           {currentCase.ackNumber && (
             <div className="flex justify-between">
-              <span className="text-slate-500 font-sans">1930 Acknowledgement #:</span>
+              <span className="text-slate-500 font-sans">{currentLang === "te" ? "1930 అక్నాలెడ్జ్‌మెంట్ నంబర్:" : "1930 Acknowledgement #:"}</span>
               <span className="font-bold text-emerald-800">{currentCase.ackNumber}</span>
             </div>
           )}
           <div className="pt-2 border-t border-rose-100 font-sans text-[11px] text-slate-600">
-            <strong>Case Notes:</strong> {currentCase.notes}
+            <strong>{t.noteText}</strong> {currentCase.notes}
           </div>
         </div>
 
         {/* Realism Disclaimer on Recovery */}
         <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200 text-[11px] text-slate-600 leading-relaxed">
-          <strong className="font-bold text-slate-900 block mb-0.5">Important Transparency Note:</strong>
-          SafeUPI facilitates automated evidence collation and structured reporting to official banking and cyber crime authorities. While reporting within 24 hours drastically improves freeze rates of beneficiary accounts, recovery relies on bank and judicial cooperation under RBI circulars.
+          <strong className="font-bold text-slate-900 block mb-0.5">
+            {currentLang === "te" ? "పారదర్శకత గమనిక:" : "Important Transparency Note:"}
+          </strong>
+          {currentLang === "te" 
+            ? "SafeUPI అధికారిక బ్యాంకింగ్ మరియు 1930 సైబర్ క్రైమ్ విభాగాలకు సమగ్ర సాక్ష్యాధారాల నివేదికను వెంటనే తయారు చేస్తుంది. మొదటి 24 గంటలలో ఫిర్యాదు చేయడం వలన నేరగాళ్ల ఖాతాలు స్తంభింపజేయబడే అవకాశాలు గణనీయంగా పెరుగుతాయి."
+            : "SafeUPI facilitates automated evidence collation and structured reporting to official banking and cyber crime authorities. While reporting within 24 hours drastically improves freeze rates of beneficiary accounts, recovery relies on bank and judicial cooperation under RBI circulars."}
         </div>
       </div>
     </div>

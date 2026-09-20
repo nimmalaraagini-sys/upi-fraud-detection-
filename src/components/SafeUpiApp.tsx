@@ -5,20 +5,24 @@ import {
   RotateCcw, Sparkles, Clock, Lock, Zap, FileText, ChevronRight,
   AlertCircle, CreditCard, Send, Smartphone, Landmark,
   X, Download, Share2, RefreshCw, KeyRound, QrCode, Camera,
-  Cpu, Activity, BarChart3, AlertOctagon, CheckSquare, Play
+  Cpu, Activity, BarChart3, AlertOctagon, CheckSquare, Play, Languages, Globe
 } from "lucide-react";
 import { BankHelplineModal } from "./BankHelplineModal";
 import { TransactionScreenshotUploader } from "./TransactionScreenshotUploader";
 import { QrCodeScannerModal, DecodedUpiQr } from "./QrCodeScannerModal";
 import { RiskMeterAndExplainability, RiskFactorItem } from "./RiskMeterAndExplainability";
 import { ScreenshotScanResult } from "../types";
-import { TRANSLATIONS } from "../utils/translations";
+import { MULTI_TRANSLATIONS, SupportedLang } from "../utils/translations";
 import { ScamSimulatorAndAwareness } from "./ScamSimulatorAndAwareness";
 import { RecoveryTrackerHub } from "./RecoveryTrackerHub";
 import { TransactionRiskDashboard } from "./TransactionRiskDashboard";
 import { TechnicalJuryModal } from "./TechnicalJuryModal";
 import { InteractiveDemoModal } from "./InteractiveDemoModal";
 import { downloadDemoVideoHtml } from "../utils/downloadDemoAssets";
+import { AdvancedSafetyCoPilot } from "./AdvancedSafetyCoPilot";
+import { GuardianApprovalModal } from "./GuardianApprovalModal";
+import { muleRegistry, MuleReportEntry } from "../utils/muleRegistry";
+import { regionalVoice } from "../utils/regionalVoice";
 
 export type ScreenState = 
   | "HOME" 
@@ -59,8 +63,9 @@ export const SafeUpiApp: React.FC<SafeUpiAppProps> = ({
   // Main App Navigation: Pay & Check, Screenshot/QR Verify, Dashboard & History, Recovery Tracker, Scam Simulator
   const [mainTab, setMainTab] = useState<"pay" | "verify" | "dashboard" | "recovery" | "simulator">("pay");
 
-  // Static English Translations
-  const t = TRANSLATIONS;
+  // Multi-Language Support: English, Telugu, Hindi, Tamil, Kannada, Marathi
+  const [currentLang, setCurrentLang] = useState<SupportedLang>("en");
+  const t = useMemo(() => MULTI_TRANSLATIONS[currentLang] || MULTI_TRANSLATIONS.en, [currentLang]);
 
   // Technical Jury Modal View State
   const [isJuryModalOpen, setIsJuryModalOpen] = useState<boolean>(false);
@@ -84,6 +89,14 @@ export const SafeUpiApp: React.FC<SafeUpiAppProps> = ({
   const [isNewDevice, setIsNewDevice] = useState<boolean>(false);
   const [isNewRecipient, setIsNewRecipient] = useState<boolean>(false);
 
+  // Next-Gen Safety Co-Pilot States (ASTRA 2026)
+  const [activePhoneCall, setActivePhoneCall] = useState<boolean>(false);
+  const [isCollectRequest, setIsCollectRequest] = useState<boolean>(false);
+  const [guardianMode, setGuardianMode] = useState<boolean>(false);
+  const [guardianPhone, setGuardianPhone] = useState<string>("+91 98765 43210");
+  const [matchedMuleEntry, setMatchedMuleEntry] = useState<MuleReportEntry | null>(null);
+  const [isGuardianModalOpen, setIsGuardianModalOpen] = useState<boolean>(false);
+
   // QR Scanner State
   const [isQrScannerOpen, setIsQrScannerOpen] = useState<boolean>(false);
   const [scannedQrNotification, setScannedQrNotification] = useState<string | null>(null);
@@ -101,10 +114,14 @@ export const SafeUpiApp: React.FC<SafeUpiAppProps> = ({
     const isModerateAmount = amount > 2000 && amount < 8000;
     const isFlaggedRecipient = recipient.toLowerCase().includes("support") || recipient.toLowerCase().includes("refund") || recipient.toLowerCase().includes("lottery") || recipient.toLowerCase().includes("new@");
 
-    const isHighRisk = (isHighAmount && (isNewDevice || isFlaggedRecipient)) || (isFlaggedRecipient && isNewDevice);
-    const isModerateRisk = !isHighRisk && (isNewDevice || isNewRecipient || isLateNight || isModerateAmount);
+    const isHighRisk = (isHighAmount && (isNewDevice || isFlaggedRecipient)) || 
+      (isFlaggedRecipient && isNewDevice) || 
+      activePhoneCall || 
+      isCollectRequest || 
+      Boolean(matchedMuleEntry);
+    const isModerateRisk = !isHighRisk && (isNewDevice || isNewRecipient || isLateNight || isModerateAmount || (guardianMode && amount > 5000));
     return !isHighRisk && !isModerateRisk;
-  }, [amount, recipient, timeStr, isNewDevice, isNewRecipient]);
+  }, [amount, recipient, timeStr, isNewDevice, isNewRecipient, activePhoneCall, isCollectRequest, matchedMuleEntry, guardianMode]);
 
   const liveEstimatedScore = useMemo(() => {
     if (!isCurrentRiskLow) return null;
@@ -248,6 +265,58 @@ export const SafeUpiApp: React.FC<SafeUpiAppProps> = ({
     const isModerateAmount = amount > 2000 && amount < 8000;
     const isFlaggedRecipient = recipient.toLowerCase().includes("support") || recipient.toLowerCase().includes("refund") || recipient.toLowerCase().includes("lottery") || recipient.toLowerCase().includes("new@");
 
+    // Version C1: Intercepted via Advanced Co-Pilot (Active Call Vishing / Reverse Flow Trap / Mule Match)
+    if (activePhoneCall || isCollectRequest || matchedMuleEntry) {
+      const reasons: string[] = [];
+      const factors: RiskFactorItem[] = [];
+
+      if (activePhoneCall) {
+        reasons.push("Active phone call detected during payment (Voice Phishing / Vishing trap)");
+        factors.push({
+          name: "Vishing / Active Phone Call Intercepted",
+          impact: 48,
+          type: "risk",
+          humanExplanation: "You are currently on a live call. Scammers pose as police/bank officers and pressure victims to enter their UPI PIN."
+        });
+        regionalVoice.speakAlert("CALL_SCAM");
+      }
+
+      if (isCollectRequest) {
+        reasons.push("Reverse Flow Inversion: This is a Collect Request, not a credit");
+        factors.push({
+          name: "Reverse Flow Trap (Collect Request)",
+          impact: 50,
+          type: "risk",
+          humanExplanation: "Entering your UPI PIN will DEDUCT money, not receive it! Scammers send collect requests claiming to send advance payments."
+        });
+        regionalVoice.speakAlert("COLLECT_TRAP");
+      }
+
+      if (matchedMuleEntry) {
+        reasons.push(`Beneficiary VPA matches National 1930 / P2P Mule Blacklist (${matchedMuleEntry.reportCount} police reports)`);
+        factors.push({
+          name: "Cryptographic P2P Mule Blacklist Hit",
+          impact: 50,
+          type: "risk",
+          humanExplanation: `Hash match detected on national cybercrime registry. Category: ${matchedMuleEntry.threatCategory.replace(/_/g, " ")}.`
+        });
+        regionalVoice.speakAlert("STOP_SCAM");
+      }
+
+      const calcMl = 96;
+      const calcRules = 98;
+      const calcCombined = Math.round(0.70 * calcMl + 0.30 * calcRules);
+      setMlScore(calcMl);
+      setRuleScore(calcRules);
+      setCurrentRiskScore(calcCombined);
+      setCurrentReasons(reasons);
+      setCurrentRiskFactors(factors);
+      setRecoveryTier("instant");
+      setCurrentScreen("RESULT_BLOCKED");
+      addRecentCheck(amount, recipient, timeStr, "blocked", "Scam Blocked", reasons);
+      return;
+    }
+
     // Version C — Blocked (rare, only when very certain)
     if ((isHighAmount && (isNewDevice || isFlaggedRecipient)) || (isFlaggedRecipient && isNewDevice)) {
       const reasons = [
@@ -294,6 +363,7 @@ export const SafeUpiApp: React.FC<SafeUpiAppProps> = ({
       ]);
       setRecoveryTier("instant");
       setCurrentScreen("RESULT_BLOCKED");
+      regionalVoice.speakAlert("STOP_SCAM");
 
       addRecentCheck(amount, recipient, timeStr, "blocked", "Blocked", reasons);
       return;
@@ -445,8 +515,15 @@ export const SafeUpiApp: React.FC<SafeUpiAppProps> = ({
     ]);
   };
 
-  // Quick Presets to let users easily test the three scenarios
-  const loadPreset = (type: "safe" | "review" | "blocked") => {
+  // Initiate PIN Entry or trigger Guardian dual-approval if enabled
+  const handleProceedToPinEntry = () => {
+    if (guardianMode) {
+      setIsGuardianModalOpen(true);
+    } else {
+      setCurrentScreen("PIN_ENTRY");
+    }
+  };
+  const loadPreset = (type: "safe" | "review" | "blocked" | "call_scam" | "collect_trap" | "mule_scam") => {
     if (type === "safe") {
       setAmount(250);
       setRecipient("Swiggy");
@@ -454,6 +531,9 @@ export const SafeUpiApp: React.FC<SafeUpiAppProps> = ({
       setIsNewDevice(false);
       setIsNewRecipient(false);
       setPaymentNote("Lunch order");
+      setActivePhoneCall(false);
+      setIsCollectRequest(false);
+      setMatchedMuleEntry(null);
     } else if (type === "review") {
       setAmount(5000);
       setRecipient("friend@upi");
@@ -461,6 +541,38 @@ export const SafeUpiApp: React.FC<SafeUpiAppProps> = ({
       setIsNewDevice(true);
       setIsNewRecipient(true);
       setPaymentNote("Urgent loan");
+      setActivePhoneCall(false);
+      setIsCollectRequest(false);
+      setMatchedMuleEntry(null);
+    } else if (type === "call_scam") {
+      setAmount(25000);
+      setRecipient("cbi_officer_safety@sbi");
+      setTimeStr("11:30 AM");
+      setIsNewDevice(false);
+      setIsNewRecipient(true);
+      setPaymentNote("Digital arrest verification bail bond");
+      setActivePhoneCall(true);
+      setIsCollectRequest(false);
+      setMatchedMuleEntry(null);
+    } else if (type === "collect_trap") {
+      setAmount(14500);
+      setRecipient("buyer_army_officer@axis");
+      setTimeStr("04:20 PM");
+      setIsNewDevice(false);
+      setIsNewRecipient(true);
+      setPaymentNote("OLX sofa token money receive");
+      setActivePhoneCall(false);
+      setIsCollectRequest(true);
+      setMatchedMuleEntry(null);
+    } else if (type === "mule_scam") {
+      setAmount(35000);
+      setRecipient("lucky_draw_winner99@ybl");
+      setTimeStr("01:10 AM");
+      setIsNewDevice(true);
+      setIsNewRecipient(true);
+      setPaymentNote("KBC lottery tax fee");
+      setActivePhoneCall(false);
+      setIsCollectRequest(false);
     } else {
       setAmount(9999);
       setRecipient("support_refund99@upi");
@@ -468,6 +580,9 @@ export const SafeUpiApp: React.FC<SafeUpiAppProps> = ({
       setIsNewDevice(true);
       setIsNewRecipient(true);
       setPaymentNote("Lottery processing fee");
+      setActivePhoneCall(false);
+      setIsCollectRequest(false);
+      setMatchedMuleEntry(null);
     }
   };
 
@@ -562,8 +677,41 @@ export const SafeUpiApp: React.FC<SafeUpiAppProps> = ({
             </div>
           </div>
 
-          {/* Quick Utility Links with Deep Rose Accents */}
+          {/* Quick Utility Links with Deep Rose Accents & Multi-Language Dropdown */}
           <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 text-xs w-full sm:w-auto justify-end">
+            {/* Multi-Language Selector Dropdown */}
+            <div className="flex items-center gap-1 bg-rose-50 px-2 py-1 rounded-xl border border-rose-200">
+              <Globe className="w-3.5 h-3.5 text-rose-700 shrink-0" />
+              <select
+                id="header-language-select"
+                value={currentLang}
+                onChange={(e) => {
+                  const newLang = e.target.value as SupportedLang;
+                  setCurrentLang(newLang);
+                  const langToVoiceMap: Record<SupportedLang, string> = {
+                    en: "en-IN",
+                    te: "te-IN",
+                    hi: "hi-IN",
+                    ta: "ta-IN",
+                    kn: "kn-IN",
+                    mr: "mr-IN"
+                  };
+                  if (langToVoiceMap[newLang]) {
+                    regionalVoice.setLanguage(langToVoiceMap[newLang] as any);
+                  }
+                }}
+                className="bg-transparent text-xs font-bold text-rose-950 focus:outline-none cursor-pointer pr-1"
+                aria-label="Select Language"
+              >
+                <option value="en">English</option>
+                <option value="te">తెలుగు (Telugu)</option>
+                <option value="hi">हिन्दी (Hindi)</option>
+                <option value="ta">தமிழ் (Tamil)</option>
+                <option value="kn">ಕನ್ನಡ (Kannada)</option>
+                <option value="mr">मराठी (Marathi)</option>
+              </select>
+            </div>
+
             {/* Interactive Demo Video Walkthrough */}
             <button
               onClick={() => setIsDemoVideoOpen(true)}
@@ -590,7 +738,7 @@ export const SafeUpiApp: React.FC<SafeUpiAppProps> = ({
                 className="px-2.5 py-1.5 rounded-xl text-rose-900 hover:text-rose-950 hover:bg-rose-50 font-semibold transition-colors flex items-center gap-1"
               >
                 <HelpCircle className="w-3.5 h-3.5 text-rose-600" />
-                <span className="hidden sm:inline">How it works</span>
+                <span className="hidden sm:inline">{t.howItWorks}</span>
               </button>
             )}
 
@@ -681,20 +829,63 @@ export const SafeUpiApp: React.FC<SafeUpiAppProps> = ({
                ========================================================================= */}
         {currentScreen === "HOME" && (
           <div className="space-y-6 animate-in fade-in duration-200">
-            {/* Deep Rose Hero Banner */}
+            {/* Deep Rose Hero Banner with Language Badge & Tagline */}
             <div className="text-center space-y-2">
               <div className="inline-flex items-center justify-center w-14 h-14 rounded-3xl bg-gradient-to-tr from-rose-700 via-rose-800 to-rose-900 text-white shadow-lg shadow-rose-800/25 mb-1">
                 <ShieldCheck className="w-7 h-7" />
               </div>
               <h1 className="text-2xl sm:text-3xl font-extrabold text-rose-950 tracking-tight">
-                SafeUPI
+                {t.appName}
               </h1>
               <p className="text-sm font-bold text-rose-800">
-                Your friendly payment guard
+                {t.appTagline}
               </p>
               <p className="text-xs sm:text-sm text-slate-600 max-w-md mx-auto leading-relaxed">
-                &ldquo;Before you pay, SafeUPI quietly checks — and tells you in plain words if something feels off.&rdquo;
+                &ldquo;{t.appSubQuote}&rdquo;
               </p>
+
+              {/* High-Visibility Multi-Language Switcher Pills */}
+              <div className="pt-2 flex flex-wrap items-center justify-center gap-1.5 max-w-md mx-auto">
+                <span className="text-[11px] font-bold text-slate-500 mr-1 flex items-center gap-1">
+                  <Languages className="w-3.5 h-3.5 text-rose-700" />
+                  <span>{t.languageSelectLabel}:</span>
+                </span>
+                {[
+                  { code: "en", label: "English" },
+                  { code: "te", label: "తెలుగు (Telugu)" },
+                  { code: "hi", label: "हिन्दी (Hindi)" },
+                  { code: "ta", label: "தமிழ்" },
+                  { code: "kn", label: "ಕನ್ನಡ" },
+                  { code: "mr", label: "मराठी" },
+                ].map((item) => (
+                  <button
+                    key={item.code}
+                    type="button"
+                    onClick={() => {
+                      const l = item.code as SupportedLang;
+                      setCurrentLang(l);
+                      const langToVoiceMap: Record<SupportedLang, string> = {
+                        en: "en-IN",
+                        te: "te-IN",
+                        hi: "hi-IN",
+                        ta: "ta-IN",
+                        kn: "kn-IN",
+                        mr: "mr-IN"
+                      };
+                      if (langToVoiceMap[l]) {
+                        regionalVoice.setLanguage(langToVoiceMap[l] as any);
+                      }
+                    }}
+                    className={`px-2.5 py-1 rounded-full text-xs font-bold transition-all cursor-pointer ${
+                      currentLang === item.code
+                        ? "bg-rose-700 text-white shadow-xs scale-105"
+                        : "bg-white text-slate-700 hover:bg-rose-100/70 border border-rose-200"
+                    }`}
+                  >
+                    {item.label}
+                  </button>
+                ))}
+              </div>
             </div>
 
             {/* QR Code Scanner CTA Card */}
@@ -753,7 +944,7 @@ export const SafeUpiApp: React.FC<SafeUpiAppProps> = ({
                 }`}
               >
                 <Send className="w-3.5 h-3.5" />
-                <span>Pay via UPI (Safe Send)</span>
+                <span>{t.payViaUpi}</span>
               </button>
 
               <button
@@ -766,19 +957,19 @@ export const SafeUpiApp: React.FC<SafeUpiAppProps> = ({
                 }`}
               >
                 <ShieldCheck className="w-3.5 h-3.5" />
-                <span>Check a Payment Only</span>
+                <span>{t.checkBeforePay}</span>
               </button>
             </div>
 
             {/* Quick Demo Scenario Switcher Pills with Deep Rose Styling */}
             <div className="bg-white border border-rose-200/90 rounded-2xl p-3.5 shadow-sm space-y-2.5">
               <div className="flex items-center justify-between text-[11px] text-rose-900 px-1 font-semibold">
-                <span>Quick demo tests:</span>
+                <span>{t.quickDemoTests}</span>
                 <button
                   onClick={() => setIsUploaderOpen(!isUploaderOpen)}
                   className="text-rose-700 font-bold hover:underline flex items-center gap-1"
                 >
-                  <span>📷 Scan Screenshot</span>
+                  <span>📷 {t.scanScreenshot}</span>
                 </button>
               </div>
 
@@ -792,7 +983,7 @@ export const SafeUpiApp: React.FC<SafeUpiAppProps> = ({
                       : "bg-rose-50/40 text-slate-700 border-rose-100 hover:bg-emerald-50/50"
                   }`}
                 >
-                  <span className="block text-[10px] text-emerald-700 font-bold">Approved</span>
+                  <span className="block text-[10px] text-emerald-700 font-bold">{t.approved}</span>
                   ₹250 Swiggy
                 </button>
 
@@ -805,7 +996,7 @@ export const SafeUpiApp: React.FC<SafeUpiAppProps> = ({
                       : "bg-rose-50/40 text-slate-700 border-rose-100 hover:bg-amber-50/50"
                   }`}
                 >
-                  <span className="block text-[10px] text-amber-800 font-bold">Review Check</span>
+                  <span className="block text-[10px] text-amber-800 font-bold">{t.reviewCheck}</span>
                   ₹5,000 Night
                 </button>
 
@@ -813,14 +1004,61 @@ export const SafeUpiApp: React.FC<SafeUpiAppProps> = ({
                   type="button"
                   onClick={() => loadPreset("blocked")}
                   className={`p-2 rounded-xl text-center border transition-all text-xs font-semibold ${
-                    amount === 9999
+                    amount === 9999 && !activePhoneCall && !isCollectRequest
                       ? "bg-rose-100 text-rose-950 border-rose-300 ring-1 ring-rose-400 shadow-2xs"
                       : "bg-rose-50/40 text-slate-700 border-rose-100 hover:bg-rose-100/50"
                   }`}
                 >
-                  <span className="block text-[10px] text-rose-700 font-bold">Blocked Scam</span>
+                  <span className="block text-[10px] text-rose-700 font-bold">{t.blockedScam}</span>
                   ₹9,999 Trap
                 </button>
+              </div>
+
+              {/* ASTRA 2026 Co-Pilot Demo Presets */}
+              <div className="pt-1">
+                <div className="text-[10px] font-bold text-slate-500 mb-1.5 uppercase tracking-wider flex items-center gap-1">
+                  <span>⚡ ASTRA Advanced Co-Pilot Scenarios:</span>
+                </div>
+                <div className="grid grid-cols-3 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => loadPreset("call_scam")}
+                    className={`p-2 rounded-xl text-center border transition-all text-xs font-semibold ${
+                      activePhoneCall
+                        ? "bg-purple-100 text-purple-950 border-purple-400 ring-1 ring-purple-400 shadow-2xs"
+                        : "bg-purple-50/60 text-purple-900 border-purple-100 hover:bg-purple-100/60"
+                    }`}
+                  >
+                    <span className="block text-[10px] text-purple-700 font-bold">{t.vishingCallDemo}</span>
+                    ₹25k Fake Police
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => loadPreset("collect_trap")}
+                    className={`p-2 rounded-xl text-center border transition-all text-xs font-semibold ${
+                      isCollectRequest
+                        ? "bg-amber-100 text-amber-950 border-amber-400 ring-1 ring-amber-400 shadow-2xs"
+                        : "bg-amber-50/60 text-amber-900 border-amber-100 hover:bg-amber-100/60"
+                    }`}
+                  >
+                    <span className="block text-[10px] text-amber-700 font-bold">{t.collectTrapDemo}</span>
+                    ₹14.5k OLX Reversal
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => loadPreset("mule_scam")}
+                    className={`p-2 rounded-xl text-center border transition-all text-xs font-semibold ${
+                      recipient === "lucky_draw_winner99@ybl"
+                        ? "bg-rose-100 text-rose-950 border-rose-400 ring-1 ring-rose-400 shadow-2xs"
+                        : "bg-rose-50/60 text-rose-900 border-rose-100 hover:bg-rose-100/60"
+                    }`}
+                  >
+                    <span className="block text-[10px] text-rose-700 font-bold">{t.muleScamDemo}</span>
+                    ₹35k KBC Lottery
+                  </button>
+                </div>
               </div>
 
               {/* Optional Screenshot scan box */}
@@ -843,14 +1081,14 @@ export const SafeUpiApp: React.FC<SafeUpiAppProps> = ({
                 <div>
                   <div className="flex items-center gap-2">
                     <h3 className="text-xs sm:text-sm font-extrabold text-white">
-                      App Feature Tour & Demo Video
+                      {t.appTourTitle}
                     </h3>
                     <span className="px-2 py-0.5 rounded-full text-[9px] font-bold bg-rose-500/20 text-rose-300 border border-rose-500/30">
-                      Live Pitch Walkthrough
+                      {t.appTourBadge}
                     </span>
                   </div>
                   <p className="text-[11px] text-slate-300 mt-0.5">
-                    Interactive 6-part video breakdown: Pre-Transmit AI, Scam Detection, Receipt Forensics & 1930 Recovery Hub.
+                    {t.appTourDesc}
                   </p>
                 </div>
               </div>
@@ -862,7 +1100,7 @@ export const SafeUpiApp: React.FC<SafeUpiAppProps> = ({
                   className="px-3 py-1.5 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-extrabold text-xs shadow-xs transition-all flex items-center gap-1.5 cursor-pointer"
                 >
                   <Play className="w-3.5 h-3.5 fill-white" />
-                  <span>Watch Demo Video</span>
+                  <span>{t.watchDemoVideo}</span>
                 </button>
 
                 <button
@@ -872,7 +1110,7 @@ export const SafeUpiApp: React.FC<SafeUpiAppProps> = ({
                   title="Download offline demo video player HTML5 file"
                 >
                   <Download className="w-3.5 h-3.5 text-emerald-400" />
-                  <span className="hidden sm:inline">Download</span>
+                  <span className="hidden sm:inline">{t.downloadVideo}</span>
                 </button>
               </div>
             </div>
@@ -882,25 +1120,25 @@ export const SafeUpiApp: React.FC<SafeUpiAppProps> = ({
               <div className="border-b border-rose-100 pb-3 flex items-center justify-between">
                 <div>
                   <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
-                    {activeTabMode === "pay" ? "Transmit Safe Payment" : "Checking a payment?"}
+                    {activeTabMode === "pay" ? t.transmitSafePayment : t.checkingPaymentTitle}
                     <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-rose-100 text-rose-800">
-                      SafeUPI Shield Active
+                      {t.safeUpiShieldActive}
                     </span>
                   </h2>
                   <p className="text-xs text-slate-500 mt-0.5">
                     {activeTabMode === "pay" 
-                      ? "SafeUPI checks for risk before your money is transmitted." 
-                      : "Enter a few details and we'll take a look."}
+                      ? t.paySubtitle
+                      : t.checkSubtitle}
                   </p>
                 </div>
               </div>
 
-              {/* One question per line, plain English */}
+              {/* One question per line */}
               <div className="space-y-4">
                 {/* Amount */}
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 sm:gap-4">
                   <label className="text-sm font-bold text-slate-800 shrink-0">
-                    Amount (₹)
+                    {t.amountLabel}
                   </label>
                   <div className="relative flex-1 sm:max-w-xs">
                     <span className="absolute left-3.5 top-1/2 -translate-y-1/2 font-bold text-rose-600 text-lg">
@@ -910,7 +1148,7 @@ export const SafeUpiApp: React.FC<SafeUpiAppProps> = ({
                       type="number"
                       value={amount || ""}
                       onChange={(e) => setAmount(Number(e.target.value) || 0)}
-                      placeholder="e.g. 5000"
+                      placeholder={t.amountPlaceholder}
                       className="w-full pl-9 pr-3 py-2.5 rounded-2xl bg-rose-50/40 border border-rose-200 text-slate-900 font-extrabold text-base focus:bg-white focus:border-rose-600 focus:ring-2 focus:ring-rose-500/20 focus:outline-none transition-colors"
                     />
                   </div>
@@ -919,14 +1157,14 @@ export const SafeUpiApp: React.FC<SafeUpiAppProps> = ({
                 {/* To (UPI ID) */}
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 sm:gap-4">
                   <label className="text-sm font-bold text-slate-800 shrink-0">
-                    To (UPI ID)
+                    {t.recipientLabel}
                   </label>
                   <div className="flex-1 sm:max-w-xs flex items-center gap-2">
                     <input
                       type="text"
                       value={recipient}
                       onChange={(e) => setRecipient(e.target.value)}
-                      placeholder="friend@upi or phone number"
+                      placeholder={t.recipientPlaceholder}
                       className="w-full px-3.5 py-2.5 rounded-2xl bg-rose-50/40 border border-rose-200 text-slate-900 font-mono text-xs font-semibold focus:bg-white focus:border-rose-600 focus:ring-2 focus:ring-rose-500/20 focus:outline-none transition-colors"
                     />
                     <button
@@ -945,7 +1183,7 @@ export const SafeUpiApp: React.FC<SafeUpiAppProps> = ({
                   <>
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 sm:gap-4">
                       <label className="text-sm font-bold text-slate-800 shrink-0">
-                        Pay From Bank
+                        {t.payFromBankLabel}
                       </label>
                       <div className="flex-1 sm:max-w-xs relative">
                         <select
@@ -964,13 +1202,13 @@ export const SafeUpiApp: React.FC<SafeUpiAppProps> = ({
 
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 sm:gap-4">
                       <label className="text-sm font-bold text-slate-800 shrink-0">
-                        Add Note
+                        {t.addNoteLabel}
                       </label>
                       <input
                         type="text"
                         value={paymentNote}
                         onChange={(e) => setPaymentNote(e.target.value)}
-                        placeholder="What is this payment for?"
+                        placeholder={t.notePlaceholder}
                         className="flex-1 sm:max-w-xs px-3.5 py-2.5 rounded-2xl bg-rose-50/40 border border-rose-200 text-slate-900 text-xs font-medium focus:bg-white focus:border-rose-600 focus:outline-none transition-colors"
                       />
                     </div>
@@ -980,7 +1218,7 @@ export const SafeUpiApp: React.FC<SafeUpiAppProps> = ({
                 {/* Time */}
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 sm:gap-4">
                   <label className="text-sm font-bold text-slate-800 shrink-0">
-                    Time
+                    {t.timeLabel}
                   </label>
                   <div className="flex items-center gap-2 flex-1 sm:max-w-xs">
                     <input
@@ -996,7 +1234,7 @@ export const SafeUpiApp: React.FC<SafeUpiAppProps> = ({
                       className="shrink-0 px-2.5 py-2 rounded-xl bg-rose-100 hover:bg-rose-200 text-[11px] font-bold text-rose-800"
                       title="Set to right now"
                     >
-                      Now
+                      {t.nowBtn}
                     </button>
                   </div>
                 </div>
@@ -1004,7 +1242,7 @@ export const SafeUpiApp: React.FC<SafeUpiAppProps> = ({
                 {/* New device? radio */}
                 <div className="flex items-center justify-between pt-2 border-t border-rose-100">
                   <span className="text-sm font-bold text-slate-800">
-                    New device?
+                    {t.newDeviceQuestion}
                   </span>
                   <div className="flex items-center gap-4 text-xs font-bold text-slate-800">
                     <label className="flex items-center gap-1.5 cursor-pointer">
@@ -1015,7 +1253,7 @@ export const SafeUpiApp: React.FC<SafeUpiAppProps> = ({
                         onChange={() => setIsNewDevice(true)}
                         className="accent-rose-700 w-4 h-4 cursor-pointer"
                       />
-                      <span>Yes</span>
+                      <span>{t.yesOption}</span>
                     </label>
                     <label className="flex items-center gap-1.5 cursor-pointer">
                       <input
@@ -1025,7 +1263,7 @@ export const SafeUpiApp: React.FC<SafeUpiAppProps> = ({
                         onChange={() => setIsNewDevice(false)}
                         className="accent-rose-700 w-4 h-4 cursor-pointer"
                       />
-                      <span>No</span>
+                      <span>{t.noOption}</span>
                     </label>
                   </div>
                 </div>
@@ -1033,7 +1271,7 @@ export const SafeUpiApp: React.FC<SafeUpiAppProps> = ({
                 {/* New recipient? radio */}
                 <div className="flex items-center justify-between">
                   <span className="text-sm font-bold text-slate-800">
-                    New recipient?
+                    {t.newRecipientQuestion}
                   </span>
                   <div className="flex items-center gap-4 text-xs font-bold text-slate-800">
                     <label className="flex items-center gap-1.5 cursor-pointer">
@@ -1044,7 +1282,7 @@ export const SafeUpiApp: React.FC<SafeUpiAppProps> = ({
                         onChange={() => setIsNewRecipient(true)}
                         className="accent-rose-700 w-4 h-4 cursor-pointer"
                       />
-                      <span>Yes</span>
+                      <span>{t.yesOption}</span>
                     </label>
                     <label className="flex items-center gap-1.5 cursor-pointer">
                       <input
@@ -1054,10 +1292,47 @@ export const SafeUpiApp: React.FC<SafeUpiAppProps> = ({
                         onChange={() => setIsNewRecipient(false)}
                         className="accent-rose-700 w-4 h-4 cursor-pointer"
                       />
-                      <span>No</span>
+                      <span>{t.noOption}</span>
                     </label>
                   </div>
                 </div>
+              </div>
+
+              {/* ASTRA 2026 Next-Gen Safety Co-Pilot Integration Panel */}
+              <div className="pt-1">
+                <AdvancedSafetyCoPilot
+                  activePhoneCall={activePhoneCall}
+                  onToggleActivePhoneCall={(val) => setActivePhoneCall(val)}
+                  isCollectRequest={isCollectRequest}
+                  onToggleCollectRequest={(val) => setIsCollectRequest(val)}
+                  guardianMode={guardianMode}
+                  onToggleGuardianMode={(val) => setGuardianMode(val)}
+                  guardianPhone={guardianPhone}
+                  onChangeGuardianPhone={(val) => setGuardianPhone(val)}
+                  currentRecipient={recipient}
+                  currentAmount={amount}
+                  onMuleFound={(mule) => setMatchedMuleEntry(mule)}
+                  selectedVoiceLang={
+                    currentLang === "te" ? "te-IN" :
+                    currentLang === "hi" ? "hi-IN" :
+                    currentLang === "ta" ? "ta-IN" :
+                    currentLang === "kn" ? "kn-IN" :
+                    currentLang === "mr" ? "mr-IN" : "en-IN"
+                  }
+                  onVoiceLangChange={(voiceLang) => {
+                    const voiceToAppLang: Record<string, SupportedLang> = {
+                      "te-IN": "te",
+                      "hi-IN": "hi",
+                      "ta-IN": "ta",
+                      "kn-IN": "kn",
+                      "mr-IN": "mr",
+                      "en-IN": "en"
+                    };
+                    if (voiceToAppLang[voiceLang]) {
+                      setCurrentLang(voiceToAppLang[voiceLang]);
+                    }
+                  }}
+                />
               </div>
 
               {/* Primary Action Button (Deep Rose, generous padding, high prominence) */}
@@ -1133,12 +1408,12 @@ export const SafeUpiApp: React.FC<SafeUpiAppProps> = ({
                   {activeTabMode === "pay" ? (
                     <>
                       <Send className="w-5 h-5" />
-                      <span>Proceed to Pay ₹{amount.toLocaleString("en-IN")} via SafeUPI</span>
+                      <span>{t.btnPayNow} (₹{amount.toLocaleString("en-IN")})</span>
                     </>
                   ) : (
                     <>
                       <ShieldCheck className="w-5 h-5" />
-                      <span>Check this payment</span>
+                      <span>{t.btnCheckBeforePay}</span>
                     </>
                   )}
                 </button>
@@ -1148,12 +1423,12 @@ export const SafeUpiApp: React.FC<SafeUpiAppProps> = ({
               <div className="pt-3 border-t border-rose-100 flex flex-col sm:flex-row items-center justify-center gap-3 text-xs text-slate-500 text-center">
                 <span className="flex items-center gap-1.5">
                   <Lock className="w-3.5 h-3.5 text-rose-600" />
-                  Quietly checks before transmitting money
+                  {t.quietlyChecks}
                 </span>
                 <span className="hidden sm:inline text-rose-300">·</span>
                 <span className="flex items-center gap-1.5">
                   <Zap className="w-3.5 h-3.5 text-amber-600" />
-                  Checks take less than a second
+                  {t.checksFast}
                 </span>
               </div>
             </div>
@@ -1166,11 +1441,11 @@ export const SafeUpiApp: React.FC<SafeUpiAppProps> = ({
                 <div className="flex items-center gap-2">
                   <Clock className="w-4 h-4 text-rose-600" />
                   <h3 className="text-xs font-bold text-rose-950 uppercase tracking-wider">
-                    Recent checks & payments
+                    {t.recentChecksTitle}
                   </h3>
                 </div>
                 <span className="text-[11px] text-slate-400 font-medium">
-                  {recentChecks.length} entries
+                  {recentChecks.length} {t.entriesCount}
                 </span>
               </div>
 
@@ -1241,10 +1516,10 @@ export const SafeUpiApp: React.FC<SafeUpiAppProps> = ({
 
             <div className="space-y-2">
               <h2 className="text-xl font-extrabold text-rose-950 tracking-tight">
-                Taking a quick look before transmitting…
+                {t.takingALook}
               </h2>
               <p className="text-xs text-slate-600 font-medium">
-                Checking recipient history, timing pattern, and device safety
+                {t.checkingDetails}
               </p>
             </div>
 
@@ -1258,7 +1533,7 @@ export const SafeUpiApp: React.FC<SafeUpiAppProps> = ({
             </div>
 
             <p className="text-[11px] text-rose-800/80 font-medium">
-              🔒 SafeUPI verifies without transmitting your money
+              {t.verifiesWithoutTransmitting}
             </p>
           </div>
         )}
@@ -1272,19 +1547,19 @@ export const SafeUpiApp: React.FC<SafeUpiAppProps> = ({
             <div className="space-y-1">
               <span className="text-4xl block mb-2">✅</span>
               <h2 className="text-2xl font-bold tracking-tight text-[#1B5E20]">
-                Looks good!
+                {t.looksGoodTitle}
               </h2>
             </div>
 
             <div className="space-y-2 text-sm leading-relaxed text-[#2E7D32] font-medium">
               <p>
-                ₹{amount.toLocaleString("en-IN")} to {recipient} looks normal.
+                ₹{amount.toLocaleString("en-IN")} → {recipient} {t.looksGoodSub}
               </p>
               <p>
-                Sent on your usual device, at a normal time.
+                {t.sentOnUsualDevice}
               </p>
               <p className="pt-2 font-bold text-[#1B5E20]">
-                You&apos;re all set.
+                {t.allSet}
               </p>
             </div>
 
@@ -1310,11 +1585,11 @@ export const SafeUpiApp: React.FC<SafeUpiAppProps> = ({
                 <button
                   type="button"
                   id="btn-enter-upi-pin"
-                  onClick={() => setCurrentScreen("PIN_ENTRY")}
+                  onClick={handleProceedToPinEntry}
                   className="w-full py-4 px-6 rounded-2xl bg-gradient-to-r from-rose-700 via-rose-800 to-rose-900 hover:from-rose-800 hover:to-rose-950 text-white font-extrabold text-sm shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer"
                 >
                   <KeyRound className="w-4 h-4" />
-                  <span>Enter UPI PIN to Transmit ₹{amount.toLocaleString("en-IN")}</span>
+                  <span>{t.enterPinToTransmit} (₹{amount.toLocaleString("en-IN")})</span>
                 </button>
               ) : (
                 <button
@@ -1322,7 +1597,7 @@ export const SafeUpiApp: React.FC<SafeUpiAppProps> = ({
                   onClick={() => setCurrentScreen("HOME")}
                   className="w-full py-3.5 px-6 rounded-2xl bg-[#2E7D32] hover:bg-[#1B5E20] text-white font-bold text-sm shadow-md shadow-emerald-900/10 transition-all cursor-pointer"
                 >
-                  Done
+                  {t.doneBtn}
                 </button>
               )}
 
@@ -1331,7 +1606,7 @@ export const SafeUpiApp: React.FC<SafeUpiAppProps> = ({
                   onClick={() => setCurrentScreen("HOME")}
                   className="text-xs text-[#2E7D32]/90 hover:text-[#1B5E20] font-semibold underline cursor-pointer"
                 >
-                  Back to SafeUPI Home
+                  {t.backToHome}
                 </button>
               </div>
             </div>
@@ -1347,18 +1622,18 @@ export const SafeUpiApp: React.FC<SafeUpiAppProps> = ({
             <div className="space-y-1">
               <span className="text-4xl block mb-2">🤔</span>
               <h2 className="text-2xl font-bold tracking-tight text-[#795548]">
-                Quick check on this one
+                {t.quickCheckTitle}
               </h2>
             </div>
 
             <p className="text-sm font-medium text-[#B26A00] leading-relaxed">
-              This payment looks a bit different from your usual pattern.
+              {t.differentPattern}
             </p>
 
             {/* Reasons List */}
             <div className="space-y-2 bg-white/70 rounded-2xl p-4 border border-[#FFE082]/60">
               <span className="text-xs font-bold text-[#8D4F00] uppercase tracking-wider block">
-                We noticed:
+                {t.weNoticed}
               </span>
               <ul className="space-y-2 text-xs font-medium text-[#795548]">
                 {currentReasons.map((reason, idx) => (
@@ -1388,7 +1663,7 @@ export const SafeUpiApp: React.FC<SafeUpiAppProps> = ({
 
             <div className="space-y-3 pt-1">
               <p className="text-sm font-bold text-[#795548] text-center">
-                Was this really you?
+                {t.wasThisReallyYou}
               </p>
 
               {/* Action Buttons */}
@@ -1399,7 +1674,7 @@ export const SafeUpiApp: React.FC<SafeUpiAppProps> = ({
                   onClick={() => {
                     addRecentCheck(amount, recipient, timeStr, "confirmed", "Confirmed by you", currentReasons);
                     if (activeTabMode === "pay") {
-                      setCurrentScreen("PIN_ENTRY");
+                      handleProceedToPinEntry();
                     } else {
                       setCurrentScreen("CONFIRMED_BY_ME");
                     }
@@ -1407,7 +1682,7 @@ export const SafeUpiApp: React.FC<SafeUpiAppProps> = ({
                   className="flex-1 py-3.5 px-4 rounded-2xl bg-[#2E7D32] hover:bg-[#1B5E20] text-white font-bold text-xs sm:text-sm shadow-xs transition-all flex items-center justify-center gap-1.5 cursor-pointer"
                 >
                   <Check className="w-4 h-4" />
-                  <span>{activeTabMode === "pay" ? "Yes, continue to Pay" : "Yes, this was me"}</span>
+                  <span>{activeTabMode === "pay" ? t.yesContinuePay : t.yesThisWasMe}</span>
                 </button>
 
                 <button
@@ -1420,15 +1695,15 @@ export const SafeUpiApp: React.FC<SafeUpiAppProps> = ({
                   className="flex-1 py-3.5 px-4 rounded-2xl bg-white hover:bg-rose-50 text-[#B71C1C] border border-[#FFCDD2] font-bold text-xs sm:text-sm shadow-xs transition-all flex items-center justify-center gap-1.5 cursor-pointer"
                 >
                   <HelpCircle className="w-4 h-4" />
-                  <span>No, something&apos;s wrong</span>
+                  <span>{t.noSomethingWrong}</span>
                 </button>
               </div>
             </div>
 
             {/* Reassurance at the bottom */}
             <div className="pt-2 border-t border-[#FFE082]/70 text-center space-y-0.5 text-xs text-[#8D4F00]">
-              <p className="font-bold">Your money hasn&apos;t been transmitted yet.</p>
-              <p className="opacity-90">Nothing is charged until you confirm.</p>
+              <p className="font-bold">{t.moneyNotTransmittedYet}</p>
+              <p className="opacity-90">{t.nothingChargedUntilConfirm}</p>
             </div>
           </div>
         )}
@@ -1442,18 +1717,18 @@ export const SafeUpiApp: React.FC<SafeUpiAppProps> = ({
             <div className="space-y-1">
               <span className="text-4xl block mb-2">🛡️</span>
               <h2 className="text-2xl font-bold tracking-tight text-[#B71C1C]">
-                We paused this for your safety
+                {t.pausedForSafetyTitle}
               </h2>
             </div>
 
             <p className="text-sm font-medium text-[#B71C1C] leading-relaxed">
-              This one matches patterns we see in reported fraud cases. We intercepted it before transmitting.
+              {t.matchedFraudPattern}
             </p>
 
             {/* Reasons List */}
             <div className="space-y-2 bg-white/70 rounded-2xl p-4 border border-[#FFCDD2]/60">
               <span className="text-xs font-bold text-[#8A1313] uppercase tracking-wider block">
-                Reasons:
+                {t.reasonsTitle}
               </span>
               <ul className="space-y-2 text-xs font-medium text-[#8A1313]">
                 {currentReasons.map((reason, idx) => (
@@ -1484,7 +1759,7 @@ export const SafeUpiApp: React.FC<SafeUpiAppProps> = ({
             {/* Action Buttons: Never dead ends, always path to help */}
             <div className="space-y-2.5 pt-1">
               <span className="text-xs font-bold text-[#8A1313] block">
-                Here&apos;s what we can do:
+                {t.whatWeCanDo}
               </span>
 
               <button
@@ -1496,7 +1771,7 @@ export const SafeUpiApp: React.FC<SafeUpiAppProps> = ({
                 className="w-full py-3.5 px-4 rounded-2xl bg-rose-800 hover:bg-rose-900 text-white font-bold text-xs sm:text-sm shadow-xs transition-all flex items-center justify-center gap-2 cursor-pointer"
               >
                 <ShieldAlert className="w-4 h-4" />
-                <span>See Recovery Options & Help</span>
+                <span>{t.seeRecoveryOptions}</span>
               </button>
 
               <button
@@ -1505,7 +1780,7 @@ export const SafeUpiApp: React.FC<SafeUpiAppProps> = ({
                 className="w-full py-3 px-4 rounded-2xl bg-white hover:bg-rose-50 text-rose-950 border border-rose-200 font-bold text-xs sm:text-sm shadow-xs transition-all flex items-center justify-center gap-2 cursor-pointer"
               >
                 <PhoneCall className="w-4 h-4 text-rose-700" />
-                <span>Call bank fraud helpline</span>
+                <span>{t.callBankHelpline}</span>
               </button>
 
               <a
@@ -1515,7 +1790,7 @@ export const SafeUpiApp: React.FC<SafeUpiAppProps> = ({
                 className="w-full py-2.5 px-4 rounded-2xl bg-white/80 hover:bg-white text-slate-800 border border-slate-200 font-bold text-xs shadow-xs transition-all flex items-center justify-center gap-2"
               >
                 <ExternalLink className="w-4 h-4 text-blue-600" />
-                <span>File a complaint (cybercrime.gov.in)</span>
+                <span>{t.fileCyberComplaint}</span>
               </a>
 
               <button
@@ -1523,7 +1798,7 @@ export const SafeUpiApp: React.FC<SafeUpiAppProps> = ({
                 onClick={() => {
                   addRecentCheck(amount, recipient, timeStr, "confirmed", "Confirmed by you", currentReasons);
                   if (activeTabMode === "pay") {
-                    setCurrentScreen("PIN_ENTRY");
+                    handleProceedToPinEntry();
                   } else {
                     setCurrentScreen("CONFIRMED_BY_ME");
                   }
@@ -1531,13 +1806,13 @@ export const SafeUpiApp: React.FC<SafeUpiAppProps> = ({
                 className="w-full py-2.5 px-4 rounded-2xl text-xs font-semibold text-[#8A1313] hover:bg-white/60 transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
               >
                 <Check className="w-3.5 h-3.5" />
-                <span>Actually, this was me (Override)</span>
+                <span>{t.overrideThisWasMe}</span>
               </button>
             </div>
 
             {/* Reassurance footer */}
             <div className="pt-3 border-t border-[#FFCDD2]/70 text-center text-xs text-[#8A1313] font-medium">
-              We&apos;re here. You&apos;re not alone. No money left your account.
+              {t.notAloneReassurance}
             </div>
           </div>
         )}
@@ -1552,15 +1827,15 @@ export const SafeUpiApp: React.FC<SafeUpiAppProps> = ({
                 <KeyRound className="w-6 h-6" />
               </div>
               <h2 className="text-lg font-extrabold text-slate-900">
-                Enter 4-Digit UPI PIN
+                {t.enterPinTitle}
               </h2>
               <div className="flex items-center justify-center gap-2 text-xs font-semibold text-rose-900">
-                <span>Paying ₹{amount.toLocaleString("en-IN")}</span>
+                <span>{t.payingAmountTo} ₹{amount.toLocaleString("en-IN")}</span>
                 <span>to</span>
                 <span className="font-mono text-slate-800">{recipient}</span>
               </div>
               <p className="text-[11px] text-slate-500">
-                Debiting from: {selectedBank}
+                {t.debitingFrom} {selectedBank}
               </p>
             </div>
 
@@ -1601,7 +1876,7 @@ export const SafeUpiApp: React.FC<SafeUpiAppProps> = ({
                 onClick={() => setCurrentScreen("HOME")}
                 className="py-3 rounded-2xl bg-slate-100 hover:bg-slate-200 text-xs font-bold text-slate-600 transition-colors"
               >
-                Cancel
+                {t.cancelBtn}
               </button>
               <button
                 type="button"
@@ -1623,13 +1898,13 @@ export const SafeUpiApp: React.FC<SafeUpiAppProps> = ({
             {isTransmitting ? (
               <div className="flex items-center justify-center gap-2 text-xs font-bold text-rose-800 animate-pulse pt-2">
                 <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                <span>Transmitting securely to recipient bank...</span>
+                <span>{t.transmittingSecurely}</span>
               </div>
             ) : (
               <div className="text-center pt-2">
                 <span className="text-[11px] text-slate-400 flex items-center justify-center gap-1">
                   <Lock className="w-3 h-3 text-rose-700" />
-                  Protected by SafeUPI pre-transmission integrity check
+                  {t.quietlyChecks}
                 </span>
               </div>
             )}
@@ -1649,36 +1924,36 @@ export const SafeUpiApp: React.FC<SafeUpiAppProps> = ({
                 ₹{amount.toLocaleString("en-IN")}
               </h2>
               <p className="text-sm font-bold text-emerald-700 flex items-center justify-center gap-1">
-                <span>Payment Successful</span>
+                <span>{t.paymentSuccessfulTitle}</span>
               </p>
               <p className="text-xs text-slate-500">
-                Paid to <strong className="text-slate-800">{recipient}</strong>
+                {t.paidToText} <strong className="text-slate-800">{recipient}</strong>
               </p>
             </div>
 
             {/* Receipt Summary Card with Deep Rose & Emerald highlights */}
             <div className="p-4 rounded-2xl bg-rose-50/40 border border-rose-100 space-y-2.5 text-xs">
               <div className="flex justify-between">
-                <span className="text-slate-500">UPI Ref ID (UTR):</span>
+                <span className="text-slate-500">{t.upiRefId}</span>
                 <span className="font-mono font-bold text-slate-900">{completedUtr}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-slate-500">From Bank:</span>
+                <span className="text-slate-500">{t.fromBankText}</span>
                 <span className="font-medium text-slate-800">{selectedBank}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-slate-500">Note:</span>
+                <span className="text-slate-500">{t.noteText}</span>
                 <span className="font-medium text-slate-800">{paymentNote}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-slate-500">Date & Time:</span>
+                <span className="text-slate-500">{t.dateTimeText}</span>
                 <span className="font-mono text-slate-700">{new Date().toLocaleString()}</span>
               </div>
               <div className="flex justify-between pt-1 border-t border-rose-200/60">
-                <span className="text-slate-500">Security Check:</span>
+                <span className="text-slate-500">{t.securityCheckText}</span>
                 <span className="font-bold text-emerald-700 flex items-center gap-1">
                   <ShieldCheck className="w-3.5 h-3.5" />
-                  Verified Safe Before Transmission
+                  {t.verifiedSafeBeforeTx}
                 </span>
               </div>
             </div>
@@ -1695,7 +1970,7 @@ export const SafeUpiApp: React.FC<SafeUpiAppProps> = ({
                 className="w-full py-3 px-4 rounded-2xl bg-rose-50 hover:bg-rose-100 border border-rose-200 text-rose-900 font-bold text-xs flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
               >
                 {copiedUtr ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5 text-rose-700" />}
-                <span>{copiedUtr ? "Receipt Details Copied!" : "Copy Receipt Details"}</span>
+                <span>{copiedUtr ? t.receiptCopied : t.copyReceipt}</span>
               </button>
 
               <button
@@ -1703,7 +1978,7 @@ export const SafeUpiApp: React.FC<SafeUpiAppProps> = ({
                 onClick={() => setCurrentScreen("HOME")}
                 className="w-full py-3.5 px-4 rounded-2xl bg-gradient-to-r from-rose-700 to-rose-900 hover:from-rose-800 hover:to-rose-950 text-white font-extrabold text-sm shadow-md transition-all cursor-pointer"
               >
-                Done · Pay Someone Else
+                {t.paySomeoneElse}
               </button>
             </div>
           </div>
@@ -2019,7 +2294,7 @@ export const SafeUpiApp: React.FC<SafeUpiAppProps> = ({
                     className="w-full py-2.5 px-3 rounded-xl bg-white hover:bg-rose-50 border border-rose-200 font-sans font-bold text-xs text-rose-900 flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
                   >
                     {copiedTxnDetails ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5 text-rose-700" />}
-                    <span>{copiedTxnDetails ? "Details copied to clipboard!" : "Copy details to paste in cyber portal"}</span>
+                    <span>{copiedTxnDetails ? t.copied : (currentLang === "te" ? "సైబర్ పోర్టల్‌లో అతికించడానికి వివరాలను కాపీ చేయండి" : "Copy details to paste in cyber portal")}</span>
                   </button>
                 </div>
               </div>
@@ -2027,7 +2302,9 @@ export const SafeUpiApp: React.FC<SafeUpiAppProps> = ({
 
             {/* Recovery honesty line */}
             <div className="p-3.5 rounded-2xl bg-amber-50 border border-amber-200 text-xs text-amber-900 leading-relaxed font-medium">
-              &ldquo;We&apos;ll help you report this right away. Recovery depends on how quickly the bank can act, and unfortunately we can&apos;t guarantee it — but acting in the next 24 hours gives you the best chance.&rdquo;
+              &ldquo;{currentLang === "te" 
+                ? "మేము దీనిని వెంటనే రిపోర్ట్ చేయడానికి మీకు సహాయం చేస్తాము. రికవరీ అనేది బ్యాంక్ ఎంత త్వరగా చర్య తీసుకుంటుంది అనేదానిపై ఆధారపడి ఉంటుంది — రాబోయే 24 గంటల్లో చర్య తీసుకోవడం ద్వారా రికవరీ అవకాశాలు ఎక్కువగా ఉంటాయి."
+                : "We'll help you report this right away. Recovery depends on how quickly the bank can act, and unfortunately we can't guarantee it — but acting in the next 24 hours gives you the best chance."}&rdquo;
             </div>
 
             {/* Bottom Actions */}
@@ -2039,7 +2316,7 @@ export const SafeUpiApp: React.FC<SafeUpiAppProps> = ({
                   className="flex-1 py-3 px-4 rounded-2xl bg-rose-100/70 hover:bg-rose-100 text-rose-900 border border-rose-200 font-bold text-xs transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
                 >
                   <FileText className="w-3.5 h-3.5" />
-                  <span>Trace Money Trail & Bank Letter</span>
+                  <span>{currentLang === "te" ? "మనీ ట్రైల్ & బ్యాంక్ లేఖను ట్రేస్ చేయండి" : "Trace Money Trail & Bank Letter"}</span>
                 </button>
               )}
 
@@ -2048,7 +2325,7 @@ export const SafeUpiApp: React.FC<SafeUpiAppProps> = ({
                 onClick={() => setCurrentScreen("HOME")}
                 className="flex-1 py-3 px-4 rounded-2xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs transition-colors flex items-center justify-center gap-1 cursor-pointer"
               >
-                <span>Back to Home</span>
+                <span>{t.backToHome}</span>
               </button>
             </div>
           </div>
@@ -2067,10 +2344,10 @@ export const SafeUpiApp: React.FC<SafeUpiAppProps> = ({
                   </div>
                   <div>
                     <h2 className="text-lg font-extrabold text-slate-900">
-                      Payment Screenshot & QR Verification Studio
+                      {currentLang === "te" ? "చెల్లింపు స్క్రీన్‌షాట్ & క్యూఆర్ ధృవీకరణ స్టూడియో" : "Payment Screenshot & QR Verification Studio"}
                     </h2>
                     <p className="text-xs text-slate-500">
-                      Detect forged payment receipts, malicious QR redirects, and edited transaction proofs
+                      {currentLang === "te" ? "నకిలీ రసీదులు, మోసపూరిత క్యూఆర్ కోడ్‌లు మరియు ఫోర్జరీ వివరాలను గుర్తించండి" : "Detect forged payment receipts, malicious QR redirects, and edited transaction proofs"}
                     </p>
                   </div>
                 </div>
@@ -2084,10 +2361,10 @@ export const SafeUpiApp: React.FC<SafeUpiAppProps> = ({
                   </div>
                   <div>
                     <h3 className="font-bold text-sm">
-                      Real-Time Camera QR Scanner
+                      {currentLang === "te" ? "రియల్-టైమ్ కెమెరా క్యూఆర్ స్కానర్" : "Real-Time Camera QR Scanner"}
                     </h3>
                     <p className="text-xs text-rose-200">
-                      Scan any paper or screen UPI QR code for instant signature check
+                      {currentLang === "te" ? "తక్షణ సంతకం & భద్రతా తనిఖీ కోసం ఏ యూపీఐ క్యూఆర్ కోడ్‌నైనా స్కాన్ చేయండి" : "Scan any paper or screen UPI QR code for instant signature check"}
                     </p>
                   </div>
                 </div>
@@ -2096,7 +2373,7 @@ export const SafeUpiApp: React.FC<SafeUpiAppProps> = ({
                   onClick={() => setIsQrScannerOpen(true)}
                   className="px-4 py-2 rounded-xl bg-white text-rose-900 hover:bg-rose-50 font-extrabold text-xs shadow-xs transition-all cursor-pointer shrink-0"
                 >
-                  Open Camera
+                  {currentLang === "te" ? "కెమెరా తెరవండి" : "Open Camera"}
                 </button>
               </div>
 
@@ -2117,7 +2394,9 @@ export const SafeUpiApp: React.FC<SafeUpiAppProps> = ({
         {/* TAB 3: TRANSACTION RISK DASHBOARD */}
         {mainTab === "dashboard" && (
           <div className="max-w-4xl mx-auto animate-in fade-in duration-200">
-            <TransactionRiskDashboard />
+            <TransactionRiskDashboard 
+              currentLang={currentLang}
+            />
           </div>
         )}
 
@@ -2125,6 +2404,7 @@ export const SafeUpiApp: React.FC<SafeUpiAppProps> = ({
         {mainTab === "recovery" && (
           <div className="max-w-3xl mx-auto animate-in fade-in duration-200">
             <RecoveryTrackerHub 
+              currentLang={currentLang}
               onOpenBankModal={() => setIsBankModalOpen(true)}
             />
           </div>
@@ -2133,7 +2413,9 @@ export const SafeUpiApp: React.FC<SafeUpiAppProps> = ({
         {/* TAB 5: SCAM SIMULATOR & AWARENESS */}
         {mainTab === "simulator" && (
           <div className="max-w-3xl mx-auto animate-in fade-in duration-200">
-            <ScamSimulatorAndAwareness />
+            <ScamSimulatorAndAwareness 
+              currentLang={currentLang}
+            />
           </div>
         )}
       </main>
@@ -2173,6 +2455,19 @@ export const SafeUpiApp: React.FC<SafeUpiAppProps> = ({
           setMainTab(tab);
           setCurrentScreen("HOME");
         }}
+      />
+
+      {/* ASTRA 2026 Guardian Dual-Approval Modal */}
+      <GuardianApprovalModal
+        isOpen={isGuardianModalOpen}
+        onClose={() => setIsGuardianModalOpen(false)}
+        onApproved={() => {
+          setIsGuardianModalOpen(false);
+          setCurrentScreen("PIN_ENTRY");
+        }}
+        amount={amount}
+        recipient={recipient}
+        guardianPhone={guardianPhone}
       />
     </div>
   );

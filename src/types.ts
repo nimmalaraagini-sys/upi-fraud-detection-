@@ -30,6 +30,10 @@ export interface TransactionPayload {
   distanceFromHomeKm: number;
   unusualHour: boolean;
   notesOrRemarks?: string;
+  activePhoneCall?: boolean;
+  guardianModeEnabled?: boolean;
+  guardianPhone?: string;
+  muleBlacklistHit?: boolean;
 }
 
 export interface RuleViolation {

@@ -4,7 +4,7 @@ import {
   Search, Filter, TrendingUp, Calendar, ArrowUpRight, 
   CreditCard, Activity, Download, Eye, RefreshCw 
 } from "lucide-react";
-import { TRANSLATIONS } from "../utils/translations";
+import { TRANSLATIONS, MULTI_TRANSLATIONS, SupportedLang } from "../utils/translations";
 
 export interface DashboardTransactionItem {
   id: string;
@@ -100,7 +100,9 @@ const SAMPLE_TRANSACTIONS: DashboardTransactionItem[] = [
 
 export const TransactionRiskDashboard: React.FC<{ 
   onInspectItem?: (item: DashboardTransactionItem) => void;
-}> = ({ onInspectItem }) => {
+  currentLang?: SupportedLang;
+}> = ({ onInspectItem, currentLang = "en" }) => {
+  const t = MULTI_TRANSLATIONS[currentLang] || MULTI_TRANSLATIONS.en;
   const [filter, setFilter] = useState<"all" | "safe" | "suspicious" | "fraud">("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedItem, setSelectedItem] = useState<DashboardTransactionItem | null>(null);
@@ -125,50 +127,50 @@ export const TransactionRiskDashboard: React.FC<{
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         <div className="bg-white border border-rose-200/90 rounded-2xl p-4 shadow-xs space-y-1">
           <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block">
-            Total Analyzed
+            {currentLang === "te" ? "మొత్తం విశ్లేషించినవి" : "Total Analyzed"}
           </span>
           <div className="text-2xl font-extrabold text-slate-900 font-mono">
             1,248
           </div>
           <span className="text-[11px] text-slate-500 flex items-center gap-1 font-medium">
             <Activity className="w-3 h-3 text-rose-600" />
-            Live UPI checks
+            {currentLang === "te" ? "లైవ్ యూపీఐ చెక్కులు" : "Live UPI checks"}
           </span>
         </div>
 
         <div className="bg-white border border-emerald-200 rounded-2xl p-4 shadow-xs space-y-1">
           <span className="text-[11px] font-bold text-emerald-700 uppercase tracking-wider block">
-            Safe Transactions
+            {currentLang === "te" ? "సురక్షిత లావాదేవీలు" : "Safe Transactions"}
           </span>
           <div className="text-2xl font-extrabold text-emerald-700 font-mono">
             1,092
           </div>
           <span className="text-[11px] text-emerald-600 font-medium">
-            87.5% · Verified OK
+            87.5% · {currentLang === "te" ? "ధృవీకరించబడింది" : "Verified OK"}
           </span>
         </div>
 
         <div className="bg-white border border-amber-200 rounded-2xl p-4 shadow-xs space-y-1">
           <span className="text-[11px] font-bold text-amber-800 uppercase tracking-wider block">
-            Suspicious Flagged
+            {currentLang === "te" ? "అనుమానాస్పద లావాదేవీలు" : "Suspicious Flagged"}
           </span>
           <div className="text-2xl font-extrabold text-amber-700 font-mono">
             106
           </div>
           <span className="text-[11px] text-amber-600 font-medium">
-            8.5% · Review prompted
+            8.5% · {currentLang === "te" ? "పరిశీలన కోరబడింది" : "Review prompted"}
           </span>
         </div>
 
         <div className="bg-white border border-rose-300 rounded-2xl p-4 shadow-xs space-y-1">
           <span className="text-[11px] font-bold text-rose-700 uppercase tracking-wider block">
-            Fraud Blocked
+            {currentLang === "te" ? "బ్లాక్ చేయబడిన మోసాలు" : "Fraud Blocked"}
           </span>
           <div className="text-2xl font-extrabold text-rose-700 font-mono">
             50
           </div>
           <span className="text-[11px] text-rose-600 font-medium">
-            4.0% · Saved ₹18.4L
+            4.0% · {currentLang === "te" ? "₹18.4లక్షలు రక్షించబడ్డాయి" : "Saved ₹18.4L"}
           </span>
         </div>
       </div>
@@ -179,22 +181,22 @@ export const TransactionRiskDashboard: React.FC<{
           <div>
             <h3 className="text-base font-extrabold text-slate-900 flex items-center gap-2">
               <TrendingUp className="w-4 h-4 text-rose-700" />
-              <span>Weekly Risk & Fraud Distribution Trend</span>
+              <span>{currentLang === "te" ? "వారంవారీ రిస్క్ & ఫ్రాడ్ పంపిణీ ట్రెండ్" : "Weekly Risk & Fraud Distribution Trend"}</span>
             </h3>
             <p className="text-xs text-slate-500">
-              Transactions monitored over the past 7 days with combined ML + Rule scoring
+              {currentLang === "te" ? "గత 7 రోజుల్లో ML + రూల్స్ ద్వారా విశ్లేషించబడిన లావాదేవీలు" : "Transactions monitored over the past 7 days with combined ML + Rule scoring"}
             </p>
           </div>
 
           <div className="flex items-center gap-3 text-xs font-semibold">
             <span className="flex items-center gap-1 text-emerald-700">
-              <span className="w-2.5 h-2.5 rounded-full bg-emerald-500"></span> Safe
+              <span className="w-2.5 h-2.5 rounded-full bg-emerald-500"></span> {t.statusSafe}
             </span>
             <span className="flex items-center gap-1 text-amber-700">
-              <span className="w-2.5 h-2.5 rounded-full bg-amber-500"></span> Suspicious
+              <span className="w-2.5 h-2.5 rounded-full bg-amber-500"></span> {t.statusSuspicious}
             </span>
             <span className="flex items-center gap-1 text-rose-700">
-              <span className="w-2.5 h-2.5 rounded-full bg-rose-600"></span> Fraud
+              <span className="w-2.5 h-2.5 rounded-full bg-rose-600"></span> {t.statusFraud}
             </span>
           </div>
         </div>
@@ -202,13 +204,13 @@ export const TransactionRiskDashboard: React.FC<{
         {/* CSS Scaled Bar Chart */}
         <div className="grid grid-cols-7 gap-2 pt-2 text-center text-[11px] font-bold text-slate-600">
           {[
-            { day: "Mon", safe: 140, susp: 12, fraud: 4 },
-            { day: "Tue", safe: 165, susp: 15, fraud: 6 },
-            { day: "Wed", safe: 190, susp: 18, fraud: 9 },
-            { day: "Thu", safe: 155, susp: 11, fraud: 5 },
-            { day: "Fri", safe: 210, susp: 22, fraud: 12 },
-            { day: "Sat", safe: 180, susp: 19, fraud: 8 },
-            { day: "Sun", safe: 52, susp: 9, fraud: 6 }
+            { day: currentLang === "te" ? "సోమ" : "Mon", safe: 140, susp: 12, fraud: 4 },
+            { day: currentLang === "te" ? "మంగళ" : "Tue", safe: 165, susp: 15, fraud: 6 },
+            { day: currentLang === "te" ? "బుధ" : "Wed", safe: 190, susp: 18, fraud: 9 },
+            { day: currentLang === "te" ? "గురు" : "Thu", safe: 155, susp: 11, fraud: 5 },
+            { day: currentLang === "te" ? "శుక్ర" : "Fri", safe: 210, susp: 22, fraud: 12 },
+            { day: currentLang === "te" ? "శని" : "Sat", safe: 180, susp: 19, fraud: 8 },
+            { day: currentLang === "te" ? "ఆది" : "Sun", safe: 52, susp: 9, fraud: 6 }
           ].map((bar, idx) => {
             const total = bar.safe + bar.susp + bar.fraud;
             return (
@@ -243,10 +245,10 @@ export const TransactionRiskDashboard: React.FC<{
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div>
             <h3 className="text-base font-extrabold text-slate-900">
-              Transaction Verification History
+              {currentLang === "te" ? "లావాదేవీల ధృవీకరణ చరిత్ర" : "Transaction Verification History"}
             </h3>
             <p className="text-xs text-slate-500">
-              Search and filter analyzed transactions with real-time risk scores
+              {currentLang === "te" ? "రియల్-టైమ్ రిస్క్ స్కోర్లతో లావాదేవీలను శోధించండి" : "Search and filter analyzed transactions with real-time risk scores"}
             </p>
           </div>
 
@@ -257,7 +259,7 @@ export const TransactionRiskDashboard: React.FC<{
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search UPI ID or amount..."
+              placeholder={currentLang === "te" ? "యూపీఐ ఐడీ లేదా మొత్తాన్ని వెతకండి..." : "Search UPI ID or amount..."}
               className="w-full pl-8 pr-3 py-1.5 rounded-xl border border-slate-200 text-xs focus:outline-rose-600"
             />
           </div>
@@ -275,7 +277,7 @@ export const TransactionRiskDashboard: React.FC<{
                   : "bg-slate-100 text-slate-600 hover:bg-slate-200"
               }`}
             >
-              {mode === "all" ? "All (1,248)" : mode === "safe" ? "🟢 Safe (1,092)" : mode === "suspicious" ? "🟡 Suspicious (106)" : "🔴 Fraud (50)"}
+              {mode === "all" ? (currentLang === "te" ? "అన్నీ (1,248)" : "All (1,248)") : mode === "safe" ? (currentLang === "te" ? "🟢 సురక్షితం (1,092)" : "🟢 Safe (1,092)") : mode === "suspicious" ? (currentLang === "te" ? "🟡 అనుమానాస్పదం (106)" : "🟡 Suspicious (106)") : (currentLang === "te" ? "🔴 మోసం (50)" : "🔴 Fraud (50)")}
             </button>
           ))}
         </div>

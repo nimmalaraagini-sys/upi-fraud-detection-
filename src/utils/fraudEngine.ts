@@ -27,6 +27,48 @@ export function evaluateRiskEngine(tx: TransactionPayload): AnalysisResult {
     });
   }
 
+  // RULE 1B: Active Background Phone Call / Vishing Co-pilot
+  if (tx.activePhoneCall) {
+    const violation: RuleViolation = {
+      code: "RULE_CALL_VISHING_01B",
+      name: "Active Phone Call Detected (Voice Phishing / Vishing Alert)",
+      severity: "CRITICAL",
+      scoreImpact: 40,
+      category: "BEHAVIORAL",
+      description: "You are currently on an active voice call while initiating this transfer. Cyber fraudsters impersonate bank managers, police officers, or electricity officers to force victims to pay during the call.",
+      remedy: "Disconnect the phone call immediately! Real banks or police never ask you to transfer funds over the phone."
+    };
+    triggeredRules.push(violation);
+    rulePoints += violation.scoreImpact;
+    factors.push({
+      factor: "Active Phone Call During Payment",
+      weight: 40,
+      type: "risk",
+      explanation: "Voice phishing (vishing) trap suspected. Scammer is likely instructing you on call."
+    });
+  }
+
+  // RULE 1C: Community Mule Account Blacklist Hit
+  if (tx.muleBlacklistHit) {
+    const violation: RuleViolation = {
+      code: "RULE_MULE_BLACKLIST_01C",
+      name: "Beneficiary on National 1930 / P2P Mule Blacklist",
+      severity: "CRITICAL",
+      scoreImpact: 50,
+      category: "BENEFICIARY",
+      description: "This recipient UPI VPA matches an active cybercrime mule account flagged in multiple police FIRs and the 1930 helpline database.",
+      remedy: "DO NOT PROCEED. This is a confirmed fraudulent mule account used for money laundering."
+    };
+    triggeredRules.push(violation);
+    rulePoints += violation.scoreImpact;
+    factors.push({
+      factor: "Known Cybercrime Mule Account (1930 Match)",
+      weight: 50,
+      type: "risk",
+      explanation: "Account flagged in national cybercrime database for repeated financial fraud."
+    });
+  }
+
   // RULE 2: Collect Request Trap
   if (tx.channel === "collect_request") {
     if (tx.receiverAccountAgeHours < 48 || tx.amount > 2000) {
