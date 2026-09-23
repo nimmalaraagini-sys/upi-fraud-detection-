@@ -1,0 +1,189 @@
+{
+  "transactions": [
+    {
+      "id": "TXN-90214",
+      "merchant": "Swiggy Food Delivery",
+      "vpa": "swiggy.orders@icici",
+      "date": "Today, 1:15 PM",
+      "amount": "₹450",
+      "rawAmount": 450,
+      "status": "Completed",
+      "riskLevel": "LOW",
+      "riskScore": 12,
+      "category": "Food & Dining",
+      "channel": "qr_code",
+      "timestamp": "2026-09-22T13:15:00.000Z",
+      "utr": "UTR8920149021",
+      "securityVerdict": "Verified Merchant — NPCI Whitelisted Merchant POS"
+    },
+    {
+      "id": "TXN-88192",
+      "merchant": "Unknown Collect (OLX Phishing Trap)",
+      "vpa": "refund.desk99@ybl",
+      "date": "Yesterday, 6:40 PM",
+      "amount": "₹8,500",
+      "rawAmount": 8500,
+      "status": "Blocked",
+      "riskLevel": "HIGH",
+      "riskScore": 87,
+      "category": "Collect Request Phishing",
+      "channel": "collect_request",
+      "timestamp": "2026-09-21T18:40:00.000Z",
+      "utr": "BLOCKED_PRE_AUTH",
+      "securityVerdict": "Inbound Collect Trap: Remote PIN Harvesting Detected"
+    },
+    {
+      "id": "TXN-87410",
+      "merchant": "Sharma Kirana Store",
+      "vpa": "sharmastore@paytm",
+      "date": "20 Sep, 11:20 AM",
+      "amount": "₹1,240",
+      "rawAmount": 1240,
+      "status": "Completed",
+      "riskLevel": "LOW",
+      "riskScore": 18,
+      "category": "Groceries",
+      "channel": "qr_code",
+      "timestamp": "2026-09-20T11:20:00.000Z",
+      "utr": "UTR8729104710",
+      "securityVerdict": "Regular Verified Neighborhood Merchant"
+    },
+    {
+      "id": "TXN-86992",
+      "merchant": "Fast KYC Verification Helpdesk",
+      "vpa": "urgent.kyc.update@airtel",
+      "date": "19 Sep, 9:05 PM",
+      "amount": "₹35,000",
+      "rawAmount": 35000,
+      "status": "Blocked",
+      "riskLevel": "HIGH",
+      "riskScore": 94,
+      "category": "Mule Account Fraud",
+      "channel": "direct_vpa",
+      "timestamp": "2026-09-19T21:05:00.000Z",
+      "utr": "BLOCKED_PRE_AUTH",
+      "securityVerdict": "National Cybercrime 1930 Blacklisted Mule Handle"
+    },
+    {
+      "id": "TXN-85401",
+      "merchant": "New Landlord Rent",
+      "vpa": "srinivas.rent@hdfc",
+      "date": "18 Sep, 10:00 AM",
+      "amount": "₹18,500",
+      "rawAmount": 18500,
+      "status": "Completed",
+      "riskLevel": "MEDIUM",
+      "riskScore": 48,
+      "category": "Housing & Utilities",
+      "channel": "direct_vpa",
+      "timestamp": "2026-09-18T10:00:00.000Z",
+      "utr": "UTR8540192841",
+      "securityVerdict": "First-time Beneficiary High Value; Guardian PIN Verified"
+    }
+  ],
+  "muleRegistry": [
+    {
+      "vpa": "refund.desk99@ybl",
+      "name": "Refund Desk 99 (Suspicious Mule)",
+      "bank": "YES Bank",
+      "riskScore": 96,
+      "reportsCount": 42,
+      "category": "MULE_ACCOUNT",
+      "flaggedDate": "2026-08-14",
+      "reason": "Repeated OLX advance payment collect scams targeting sellers"
+    },
+    {
+      "vpa": "urgent.kyc.update@airtel",
+      "name": "SIM Verification Bot",
+      "bank": "Airtel Payments Bank",
+      "riskScore": 99,
+      "reportsCount": 118,
+      "category": "IMPERSONATION",
+      "flaggedDate": "2026-07-29",
+      "reason": "Fake electricity and SIM card deactivation SMS campaigns"
+    },
+    {
+      "vpa": "fast_crypto_cash@airtel",
+      "name": "P2P Crypto Cashout Mule",
+      "bank": "Airtel Payments Bank",
+      "riskScore": 92,
+      "reportsCount": 35,
+      "category": "MULE_ACCOUNT",
+      "flaggedDate": "2026-09-02",
+      "reason": "Rapid layer-2 mule hopping for illicit telegram task deposits"
+    },
+    {
+      "vpa": "game_topup_bot@paytm",
+      "name": "Instant Gaming Topup Bot",
+      "bank": "Paytm Payments Bank",
+      "riskScore": 88,
+      "reportsCount": 27,
+      "category": "MICRO_BURST_LAUNDERING",
+      "flaggedDate": "2026-09-10",
+      "reason": "Consecutive micro-transactions under ₹5,000 threshold"
+    },
+    {
+      "vpa": "swiggy.orders@icici",
+      "name": "Bundl Technologies Pvt Ltd (Swiggy)",
+      "bank": "ICICI Bank",
+      "riskScore": 4,
+      "reportsCount": 0,
+      "category": "VERIFIED_ENTERPRISE",
+      "flaggedDate": null,
+      "reason": "NPCI Tier-1 Whitelisted Corporate Merchant"
+    },
+    {
+      "vpa": "sharmastore@paytm",
+      "name": "Sharma Kirana Store",
+      "bank": "Paytm Payments Bank",
+      "riskScore": 8,
+      "reportsCount": 0,
+      "category": "VERIFIED_MERCHANT",
+      "flaggedDate": null,
+      "reason": "Registered GST merchant with 3+ years active UPI settlement"
+    }
+  ],
+  "complaints": [
+    {
+      "id": "CYB-2026-90412",
+      "timestamp": "2026-09-21T19:00:00.000Z",
+      "victimVpa": "rahul.sharma@safeupi.in",
+      "suspectVpa": "refund.desk99@ybl",
+      "amount": 8500,
+      "incidentType": "Collect Request Phishing",
+      "status": "FROZEN_1930",
+      "docketNumber": "1930-MHA-892410",
+      "bankReported": "State Bank of India",
+      "notes": "Mule account held at YES Bank frozen within golden hour window."
+    }
+  ],
+  "threatIntel": [
+    {
+      "id": "THREAT-2026-01",
+      "title": "Malicious 'Electricity Power Bill Disconnection' SMS Attack",
+      "severity": "CRITICAL",
+      "description": "Scammers are sending SMS stating power supply will be disconnected at 9:30 PM due to unpaid previous month bills. They request installing an APK file containing remote access malware.",
+      "remedy": "Never install APK files sent via WhatsApp or SMS. Pay bills only through the official state electricity board portal.",
+      "issuedBy": "CERT-In & I4C",
+      "date": "2026-09-22"
+    },
+    {
+      "id": "THREAT-2026-02",
+      "title": "Counterfeit Physical QR Stickers Pasted in Busy Cafes",
+      "severity": "HIGH",
+      "description": "Fraud syndicates are pasting paper QR stickers with look-alike merchant names over genuine merchant counter QR stands in Bengaluru and Hyderabad.",
+      "remedy": "SafeUPI scans QR code metadata and cross-checks the registered merchant category code before authorizing payment.",
+      "issuedBy": "NPCI Advisory Board",
+      "date": "2026-09-20"
+    },
+    {
+      "id": "THREAT-2026-03",
+      "title": "Part-Time YouTube/Hotel Review Task Phishing",
+      "severity": "MEDIUM",
+      "description": "Victims are lured into Telegram groups promising ₹500/task for reviewing hotels, followed by demand for ₹10,000 to ₹50,000 'VIP Task Security Deposits'.",
+      "remedy": "Any work-from-home job that demands money before releasing earnings is 100% financial fraud.",
+      "issuedBy": "Cyber Cell Delhi Police",
+      "date": "2026-09-18"
+    }
+  ]
+}

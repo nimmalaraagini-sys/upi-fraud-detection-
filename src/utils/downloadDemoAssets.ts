@@ -237,7 +237,7 @@ export function downloadDemoVideoHtml() {
       <div class="badge-icon">▶</div>
       <div class="title-area">
         <h1>SafeUPI Video Walkthrough & Features <span class="pill">2m 45s with Voice</span></h1>
-        <p>Pre-Transmit Fraud Detection & Recovery System | Smart India Hackathon</p>
+        <p>Real-Time Fraud Detection & Incident Recovery System | Smart India Hackathon</p>
       </div>
     </div>
     <div class="header-actions">
@@ -275,7 +275,7 @@ export function downloadDemoVideoHtml() {
     <div class="script-pane">
       <div>
         <span class="tag" id="badgeLabel">PART 1: THE CORE PREMISE</span>
-        <h2 style="font-size:1.35rem; font-weight:800; margin-top:0.35rem;" id="titleLabel">Real-Time Pre-Transmit Interception</h2>
+        <h2 style="font-size:1.35rem; font-weight:800; margin-top:0.35rem;" id="titleLabel">Real-Time Payment Security Interception</h2>
         
         <div class="voiceover-box">
           <div style="font-size:0.7rem; color:#fbbf24; font-weight:bold; margin-bottom:0.4rem; text-transform:uppercase; letter-spacing:0.05em; display:flex; justify-content:space-between;">
@@ -305,17 +305,17 @@ export function downloadDemoVideoHtml() {
         time: "0:00 - 0:25",
         duration: 25,
         badge: "PART 1: THE PROBLEM & VISION",
-        title: "Real-Time Pre-Transmit Interception",
+        title: "Real-Time Payment Security Interception",
         category: "The ₹14B Transaction Dilemma",
         narration: "Respected jury, India processes over fourteen billion UPI transactions every single month. But every existing banking security system operates post-transaction—sending an SMS alert only after your money has left the account. By that time, fraudsters have already dispersed stolen funds through multi-layered mule accounts in under five minutes, causing recovery rates to plummet below eight percent. SafeUPI flips this paradigm entirely: we intercept and evaluate risk before the user enters their UPI PIN, stopping cyber fraud at the point of intent.",
         highlights: [
           "Over 14 Billion UPI transactions processed every month across India",
           "Legacy banking alerts trigger post-transaction with <8% recovery",
-          "Pre-transmit interception prevents stolen funds from ever leaving device"
+          "Real-time safety indicators prevent stolen funds from ever leaving device"
         ],
         visualHtml: \`
           <div style="display:flex; justify-content:space-between; border-bottom:1px solid #334155; padding-bottom:0.5rem; margin-bottom:0.75rem;">
-            <strong style="color:#f43f5e; font-size:0.8rem;">PRE-TRANSMIT INTERCEPTION ACTIVE</strong>
+            <strong style="color:#f43f5e; font-size:0.8rem;">REAL-TIME PAYMENT SECURITY ACTIVE</strong>
             <span style="color:#10b981; font-size:0.75rem; font-weight:bold;">EDGE GUARD</span>
           </div>
           <div class="sim-box" style="display:flex; justify-content:space-between; align-items:center;">
@@ -343,7 +343,7 @@ export function downloadDemoVideoHtml() {
         category: "70/30 Hybrid AI Architecture",
         narration: "Watch our risk engine in action. Here, a user attempts to transmit forty-eight thousand rupees to an unverified lottery account on a newly logged-in smartphone at two-thirty in the morning. SafeUPI's seventy-thirty hybrid architecture instantly scores this transaction at ninety-four percent extreme risk. Instead of an obscure technical error code, our Explainable AI breaks down the exact risk factors in clear language: a twenty-times spike in amount, a brand new device, and high-risk lottery keywords, giving the user a conscious and protective hard pause.",
         highlights: [
-          "Hybrid Formula: (0.70 × Random Forest ML) + (0.30 × Deterministic Rules)",
+          "Hybrid Formula: (0.70 × Edge ML) + (0.30 × Deterministic Rules)",
           "Explainable AI: Point weights (+35 Device, +25 Amount Spike)",
           "Zero-tolerance heuristic block on known lottery keywords"
         ],
@@ -480,7 +480,7 @@ export function downloadDemoVideoHtml() {
           <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:0.5rem; text-align:center; margin-bottom:0.5rem;">
             <div class="sim-box">
               <div style="font-size:0.65rem; color:#94a3b8;">ML MODEL</div>
-              <strong style="font-size:0.8rem; color:#fff;">Random Forest</strong>
+              <strong style="font-size:0.8rem; color:#fff;">Edge ML Classifier</strong>
             </div>
             <div class="sim-box">
               <div style="font-size:0.65rem; color:#94a3b8;">RECALL</div>
@@ -492,7 +492,7 @@ export function downloadDemoVideoHtml() {
             </div>
           </div>
           <div class="sim-box" style="font-family:monospace; font-size:0.75rem; color:#94a3b8; text-align:center;">
-            Score = (0.70 × Random Forest) + (0.30 × Deterministic Heuristics)
+            Score = (0.70 × Edge ML) + (0.30 × Deterministic Heuristics)
           </div>
         \`
       }
@@ -650,14 +650,14 @@ export function downloadDemoVideoHtml() {
  * and feature manual in Markdown (.MD) format.
  */
 export function downloadDemoScriptMarkdown() {
-  const mdContent = `# SafeUPI: Pre-Transmit UPI Fraud Detection & Incident Recovery System
+  const mdContent = `# SafeUPI: Real-Time UPI Fraud Detection & Incident Recovery System
 ## 2-Minute 45-Second Pitch & Feature Walkthrough Script
 **Target Duration:** 2 minutes 45 seconds (165 seconds)
 **Audio Mode:** Live Speech Synthesis Audio & Real-Time Chimes
 
 ---
 
-### Executive Summary: Why Pre-Transmit Interception?
+### Executive Summary: Why Real-Time Interception?
 - Over **14 Billion UPI transactions** are processed monthly in India.
 - Conventional bank alerts occur **post-transaction**, after stolen money has already entered cascading mule networks in under 5 minutes.
 - Once funds disperse, police and judicial recovery rates drop below **8%**.
@@ -666,7 +666,7 @@ export function downloadDemoScriptMarkdown() {
 ---
 
 ### Chapter 1: The Problem & Vision (0:00 - 0:25) | 25 seconds
-- **Visual:** Real-Time Pre-Transmit Interception active banner on SafeUPI payment screen.
+- **Visual:** Real-Time Payment Security Status active banner on SafeUPI payment screen.
 - **Spoken Voiceover:**
   > *"Respected jury, India processes over fourteen billion UPI transactions every single month. But every existing banking security system operates post-transaction—sending an SMS alert only after your money has left the account. By that time, fraudsters have already dispersed stolen funds through multi-layered mule accounts in under five minutes, causing recovery rates to plummet below eight percent. SafeUPI flips this paradigm entirely: we intercept and evaluate risk before the user enters their UPI PIN, stopping cyber fraud at the point of intent."*
 - **Key Takeaways:**
@@ -681,7 +681,7 @@ export function downloadDemoScriptMarkdown() {
 - **Spoken Voiceover:**
   > *"Watch our risk engine in action. Here, a user attempts to transmit forty-eight thousand rupees to an unverified lottery account on a newly logged-in smartphone at two-thirty in the morning. SafeUPI's seventy-thirty hybrid architecture instantly scores this transaction at ninety-four percent extreme risk. Instead of an obscure technical error code, our Explainable AI breaks down the exact risk factors in clear language: a twenty-times spike in amount, a brand new device, and high-risk lottery keywords, giving the user a conscious and protective hard pause."*
 - **Key Takeaways:**
-  - 70% Random Forest ML probability + 30% Deterministic Security Rules.
+  - 70% Edge ML probability + 30% Deterministic Security Rules.
   - XAI Point Breakdown: +35 Device Trust, +25 Amount Spike, +15 Velocity.
   - Heuristic zero-tolerance overrides on lottery/refund keywords.
 

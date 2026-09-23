@@ -108,3 +108,5 @@ export interface ScreenshotScanResult {
   confidenceScore?: number;
   suggestedPayload: Partial<TransactionPayload>;
 }
+
+export type { UserProfile } from "./data/userProfiles";

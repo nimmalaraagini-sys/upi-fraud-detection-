@@ -1,6 +1,6 @@
 {
-  "name": "UPI Fraud Detector",
-  "description": "SafeUPI: Before you pay, SafeUPI quietly checks — and tells you in plain words if something feels off.",
+  "name": "SafeUPI — Check Before You Pay",
+  "description": "SafeUPI by Team Secure Shield: Smart protection against digital payment fraud. Detect suspicious UPI transactions before you pay.",
   "requestFramePermissions": ["camera"],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

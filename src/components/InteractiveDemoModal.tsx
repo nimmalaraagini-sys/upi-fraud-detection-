@@ -44,7 +44,7 @@ export const InteractiveDemoModal: React.FC<InteractiveDemoModalProps> = ({
       id: 1,
       time: "0:00 - 0:25",
       badge: "Part 1: The Problem & Vision",
-      title: "Real-Time Pre-Transmit Interception",
+      title: "Real-Time Payment Security Interception",
       category: "The ₹14B Transaction Dilemma",
       durationSeconds: 25,
       narration:
@@ -52,7 +52,7 @@ export const InteractiveDemoModal: React.FC<InteractiveDemoModalProps> = ({
       highlightPoints: [
         "14+ Billion monthly UPI transactions across India",
         "Legacy bank alerts trigger post-transaction with <8% recovery",
-        "Pre-transmit interception prevents funds from ever leaving the device"
+        "Real-time safety indicators prevent funds from ever leaving the device"
       ],
       visualMock: "normal_payment",
       targetTab: "pay"
@@ -67,7 +67,7 @@ export const InteractiveDemoModal: React.FC<InteractiveDemoModalProps> = ({
       narration:
         "Watch our risk engine in action. Here, a user attempts to transmit forty-eight thousand rupees to an unverified lottery account on a newly logged-in smartphone at two-thirty in the morning. SafeUPI's seventy-thirty hybrid architecture instantly scores this transaction at ninety-four percent extreme risk. Instead of an obscure technical error code, our Explainable AI breaks down the exact risk factors in clear language: a twenty-times spike in amount, a brand new device, and high-risk lottery keywords, giving the user a conscious and protective hard pause.",
       highlightPoints: [
-        "Hybrid Formula: (0.70 × Random Forest ML) + (0.30 × Deterministic Rules)",
+        "Hybrid Formula: (0.70 × Client-Edge ML) + (0.30 × Deterministic Rules)",
         "Explainable AI: Breaks down point weights (+35 Device, +25 Amount Spike)",
         "Zero-tolerance heuristic block on known cyber scam patterns"
       ],
@@ -378,7 +378,7 @@ export const InteractiveDemoModal: React.FC<InteractiveDemoModalProps> = ({
                   <div className="flex items-center justify-between border-b border-slate-800 pb-3">
                     <span className="text-xs font-bold text-slate-400">SIMULATED INTERCEPTION ENGINE</span>
                     <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-400">
-                      PRE-TRANSMIT ACTIVE
+                      PAYMENT SECURITY ACTIVE
                     </span>
                   </div>
                   <div className="p-4 rounded-xl bg-slate-950 border border-slate-800 flex items-center gap-3">
@@ -525,7 +525,7 @@ export const InteractiveDemoModal: React.FC<InteractiveDemoModalProps> = ({
                   <div className="grid grid-cols-3 gap-2 text-center text-xs">
                     <div className="bg-slate-950 p-2.5 rounded-xl border border-slate-800">
                       <div className="text-slate-500 text-[10px]">Model</div>
-                      <div className="font-bold text-white mt-0.5">Random Forest</div>
+                      <div className="font-bold text-white mt-0.5">Edge ML Classifier</div>
                     </div>
                     <div className="bg-slate-950 p-2.5 rounded-xl border border-slate-800">
                       <div className="text-slate-500 text-[10px]">Recall</div>

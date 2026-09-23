@@ -5,8 +5,11 @@ import {
   RotateCcw, Sparkles, Clock, Lock, Zap, FileText, ChevronRight,
   AlertCircle, CreditCard, Send, Smartphone, Landmark,
   X, Download, Share2, RefreshCw, KeyRound, QrCode, Camera,
-  Cpu, Activity, BarChart3, AlertOctagon, CheckSquare, Play, Languages, Globe
+  Cpu, Activity, BarChart3, AlertOctagon, CheckSquare, Play, Languages, Globe,
+  User, Building2, LogIn, LogOut, Shield, CheckCircle,
+  MessageSquare, Terminal, Bot
 } from "lucide-react";
+import { SafeUpiAiChat } from "./SafeUpiAiChat";
 import { BankHelplineModal } from "./BankHelplineModal";
 import { TransactionScreenshotUploader } from "./TransactionScreenshotUploader";
 import { QrCodeScannerModal, DecodedUpiQr } from "./QrCodeScannerModal";
@@ -23,6 +26,11 @@ import { AdvancedSafetyCoPilot } from "./AdvancedSafetyCoPilot";
 import { GuardianApprovalModal } from "./GuardianApprovalModal";
 import { muleRegistry, MuleReportEntry } from "../utils/muleRegistry";
 import { regionalVoice } from "../utils/regionalVoice";
+import { USER_PROFILES, UserProfile } from "../data/userProfiles";
+import { UserProfileModal } from "./UserProfileModal";
+import { UserLoginModal } from "./UserLoginModal";
+import { ProjectDocumentationModal } from "./ProjectDocumentationModal";
+import { downloadProjectPdf } from "../utils/downloadProjectDoc";
 
 export type ScreenState = 
   | "HOME" 
@@ -70,10 +78,14 @@ export const SafeUpiApp: React.FC<SafeUpiAppProps> = ({
   // Technical Jury Modal View State
   const [isJuryModalOpen, setIsJuryModalOpen] = useState<boolean>(false);
 
+  // Multilingual AI Chat & Cyber Terminal States
+  const [isAiChatOpen, setIsAiChatOpen] = useState<boolean>(false);
+  const [isTerminalOpen, setIsTerminalOpen] = useState<boolean>(false);
+
   // Interactive Demo Video Walkthrough State
   const [isDemoVideoOpen, setIsDemoVideoOpen] = useState<boolean>(false);
 
-  // Dual-Engine Scores (70% ML Random Forest + 30% Deterministic Rule Engine)
+  // Dual-Engine Scores (Payment Security Status & Real-time Safety Indicators)
   const [mlScore, setMlScore] = useState<number>(54);
   const [ruleScore, setRuleScore] = useState<number>(66);
 
@@ -88,6 +100,13 @@ export const SafeUpiApp: React.FC<SafeUpiAppProps> = ({
   const [timeStr, setTimeStr] = useState<string>("02:00 AM");
   const [isNewDevice, setIsNewDevice] = useState<boolean>(false);
   const [isNewRecipient, setIsNewRecipient] = useState<boolean>(false);
+
+  // User Profile & Linked Bank State (5 Personas supported)
+  const [activeProfile, setActiveProfile] = useState<UserProfile>(USER_PROFILES[0]);
+  const [isLoggedIn, setIsLoggedIn] = useState<boolean>(true);
+  const [isLoginModalOpen, setIsLoginModalOpen] = useState<boolean>(false);
+  const [isProfileModalOpen, setIsProfileModalOpen] = useState<boolean>(false);
+  const [isDocModalOpen, setIsDocModalOpen] = useState<boolean>(false);
 
   // Next-Gen Safety Co-Pilot States (ASTRA 2026)
   const [activePhoneCall, setActivePhoneCall] = useState<boolean>(false);
@@ -105,8 +124,8 @@ export const SafeUpiApp: React.FC<SafeUpiAppProps> = ({
   const [currentRiskScore, setCurrentRiskScore] = useState<number>(58);
   const [currentRiskFactors, setCurrentRiskFactors] = useState<RiskFactorItem[]>([]);
 
-  // Instant real-time risk assessment for the active form values
-  const isCurrentRiskLow = useMemo(() => {
+  // Dynamic real-time risk score calculation (0 - 100) based on all live telemetry
+  const liveRiskAssessment = useMemo(() => {
     const isLateNight = timeStr.toLowerCase().includes("am") && (
       timeStr.startsWith("01") || timeStr.startsWith("02") || timeStr.startsWith("03") || timeStr.startsWith("04") || timeStr.startsWith("1") || timeStr.startsWith("2") || timeStr.startsWith("3") || timeStr.startsWith("4")
     );
@@ -114,19 +133,65 @@ export const SafeUpiApp: React.FC<SafeUpiAppProps> = ({
     const isModerateAmount = amount > 2000 && amount < 8000;
     const isFlaggedRecipient = recipient.toLowerCase().includes("support") || recipient.toLowerCase().includes("refund") || recipient.toLowerCase().includes("lottery") || recipient.toLowerCase().includes("new@");
 
-    const isHighRisk = (isHighAmount && (isNewDevice || isFlaggedRecipient)) || 
-      (isFlaggedRecipient && isNewDevice) || 
-      activePhoneCall || 
-      isCollectRequest || 
-      Boolean(matchedMuleEntry);
-    const isModerateRisk = !isHighRisk && (isNewDevice || isNewRecipient || isLateNight || isModerateAmount || (guardianMode && amount > 5000));
-    return !isHighRisk && !isModerateRisk;
+    let score = 10;
+    const factors: string[] = [];
+
+    if (activePhoneCall) {
+      score += 48;
+      factors.push("Active call detected (Vishing risk)");
+    }
+    if (isCollectRequest) {
+      score += 45;
+      factors.push("Reverse Collect Request trap");
+    }
+    if (matchedMuleEntry) {
+      score += 50;
+      factors.push("Matched Cyber Crime 1930 Blacklist");
+    }
+    if (isFlaggedRecipient) {
+      score += 35;
+      factors.push("Flagged scam keywords in UPI handle");
+    }
+    if (isHighAmount) {
+      score += 28;
+      factors.push(`Unusual spike ₹${amount.toLocaleString("en-IN")}`);
+    } else if (isModerateAmount) {
+      score += 15;
+      factors.push(`Higher than usual baseline ₹${amount.toLocaleString("en-IN")}`);
+    }
+    if (isNewDevice) {
+      score += 22;
+      factors.push("Unfamiliar hardware fingerprint");
+    }
+    if (isLateNight) {
+      score += 16;
+      factors.push(`Late-night timing (${timeStr})`);
+    }
+    if (isNewRecipient) {
+      score += 12;
+      factors.push("First-time beneficiary");
+    }
+    if (guardianMode && amount > 5000) {
+      score += 10;
+      factors.push("Guardian dual-authorization threshold");
+    }
+
+    // Clamp score
+    const finalScore = Math.min(99, Math.max(8, score));
+    const level: "low" | "medium" | "high" = finalScore <= 30 ? "low" : finalScore <= 70 ? "medium" : "high";
+
+    return {
+      score: finalScore,
+      level,
+      factors,
+      isLow: level === "low",
+      isMedium: level === "medium",
+      isHigh: level === "high"
+    };
   }, [amount, recipient, timeStr, isNewDevice, isNewRecipient, activePhoneCall, isCollectRequest, matchedMuleEntry, guardianMode]);
 
-  const liveEstimatedScore = useMemo(() => {
-    if (!isCurrentRiskLow) return null;
-    return Math.min(18, Math.max(6, Math.round(8 + (amount > 1000 ? 4 : 0))));
-  }, [isCurrentRiskLow, amount]);
+  const isCurrentRiskLow = liveRiskAssessment.isLow;
+  const liveEstimatedScore = liveRiskAssessment.score;
 
   // Safe Verified badge copy summary state
   const [copiedSafeVerified, setCopiedSafeVerified] = useState<boolean>(false);
@@ -137,7 +202,7 @@ export const SafeUpiApp: React.FC<SafeUpiAppProps> = ({
       timeStyle: "short",
     });
     const summaryText = [
-      `🛡️ SafeUPI Pre-Payment Security Verification Summary`,
+      `🛡️ Secure Shield Security Verification Summary`,
       `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`,
       `• Status: SAFE VERIFIED (Low Risk)`,
       `• Risk Score: ${liveEstimatedScore || 10}% / 100%`,
@@ -145,11 +210,11 @@ export const SafeUpiApp: React.FC<SafeUpiAppProps> = ({
       `• Transaction Amount: ₹${amount.toLocaleString("en-IN")}`,
       `• Behavioral Time: ${timeStr}`,
       `• Registered Device: ${isNewDevice ? "New Device (Enrolled)" : "Trusted Device (Primary Hardware ID)"}`,
-      `• Pre-Transmit Engine: 70/30 Hybrid Ensemble Active`,
+      `• Zero-PII Defense Engine: Active`,
       `• Checks Passed: Valid NPCI VPA format, no scam keyword pattern, baseline velocity normal`,
       `• Verified At: ${timestamp}`,
       `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`,
-      `Protected before UPI PIN entry by SafeUPI (Zero-PII Client Edge Shield)`
+      `Protected before UPI PIN entry by Secure Shield (Zero-PII Client Edge)`
     ].join("\n");
 
     if (navigator.clipboard && navigator.clipboard.writeText) {
@@ -237,6 +302,10 @@ export const SafeUpiApp: React.FC<SafeUpiAppProps> = ({
 
   // Handle checking logic
   const handleStartCheck = () => {
+    if (!isLoggedIn) {
+      setIsLoggedIn(true);
+    }
+
     setCurrentScreen("CHECKING");
     setCheckingProgress(2);
 
@@ -586,6 +655,21 @@ export const SafeUpiApp: React.FC<SafeUpiAppProps> = ({
     }
   };
 
+  // Switch between any of the 5 user testing personas
+  const handleSelectProfile = (profile: UserProfile) => {
+    setActiveProfile(profile);
+    setSelectedBank(`${profile.bankName} (${profile.accountNumberMasked})`);
+    if (profile.guardianProtection?.enabled) {
+      setGuardianMode(true);
+      setGuardianPhone(profile.guardianProtection.guardianPhone);
+    } else {
+      setGuardianMode(false);
+    }
+    if (profile.quickScenarioPreset) {
+      loadPreset(profile.quickScenarioPreset as any);
+    }
+  };
+
   // Handle Screenshot extraction
   const handleScreenshotExtracted = (scan: ScreenshotScanResult) => {
     if (scan.detectedAmount) setAmount(scan.detectedAmount);
@@ -650,38 +734,115 @@ export const SafeUpiApp: React.FC<SafeUpiAppProps> = ({
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-rose-50/70 via-stone-50/50 to-rose-100/40 text-slate-800 font-sans pb-16">
-      {/* Top Deep Rose Brand Header Bar */}
-      <header className="border-b border-rose-200/80 bg-white/95 backdrop-blur-md sticky top-0 z-30 shadow-2xs">
-        <div className="max-w-5xl mx-auto px-4 py-3 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+    <div className="min-h-screen bg-[#070b14] text-slate-100 font-sans pb-16 relative selection:bg-emerald-500 selection:text-white">
+      {/* Subtle ambient cyber glow background patterns */}
+      <div className="fixed inset-0 bg-[radial-gradient(ellipse_80%_60%_at_50%_-20%,rgba(16,185,129,0.12),rgba(14,165,233,0.04),transparent_70%)] pointer-events-none z-0" />
+      <div className="fixed inset-0 bg-[linear-gradient(to_right,rgba(255,255,255,0.02)_1px,transparent_1px),linear-gradient(to_bottom,rgba(255,255,255,0.02)_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_0%,#000_70%,transparent_100%)] pointer-events-none z-0" />
+
+      {/* Top Cyber Brand Header Bar */}
+      <header className="border-b border-slate-800/80 bg-[#0c1220]/90 backdrop-blur-xl sticky top-0 z-30 shadow-xl shadow-black/40">
+        <div className="max-w-5xl mx-auto px-4 py-3 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 relative z-10">
           <div 
             onClick={() => { setCurrentScreen("HOME"); setMainTab("pay"); }}
-            className="flex items-center gap-2.5 cursor-pointer select-none"
+            className="flex items-center gap-3 cursor-pointer select-none group"
           >
-            <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-rose-700 to-rose-900 text-white flex items-center justify-center shadow-md shadow-rose-900/20">
-              <ShieldCheck className="w-5 h-5" />
+            <div className="relative w-11 h-11 rounded-2xl bg-gradient-to-br from-slate-900 via-slate-850 to-slate-950 p-[1.5px] shadow-xl shadow-emerald-950/60 ring-1 ring-emerald-500/40 group-hover:ring-emerald-400 group-hover:scale-105 transition-all">
+              <div className="w-full h-full rounded-[14px] bg-gradient-to-br from-emerald-950/80 via-slate-900 to-teal-950/90 flex items-center justify-center relative overflow-hidden">
+                <div className="absolute inset-0 bg-[radial-gradient(#10b981_1px,transparent_1px)] [background-size:5px_5px] opacity-25" />
+                <div className="relative z-10 flex items-center justify-center">
+                  <ShieldCheck className="w-6 h-6 text-emerald-400 drop-shadow-[0_0_8px_rgba(16,185,129,0.7)]" />
+                  <Zap className="w-2.5 h-2.5 text-cyan-300 absolute -top-0.5 -right-0.5 animate-pulse" />
+                </div>
+              </div>
             </div>
             <div>
-              <div className="flex items-center gap-1.5">
-                <span className="font-extrabold text-lg text-rose-950 tracking-tight">SafeUPI</span>
-                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-rose-100 text-rose-800 border border-rose-200">
-                  Pre-Transmit Guard
+              <div className="flex items-center gap-2">
+                <span className="font-black text-lg sm:text-xl tracking-tight bg-gradient-to-r from-white via-slate-100 to-emerald-300 bg-clip-text text-transparent">
+                  SafeUPI
                 </span>
-                <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 hidden md:inline">
-                  Random Forest + Rules
+                <span className="text-[9px] font-black tracking-wider px-2 py-0.5 rounded-md bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 font-mono shadow-sm">
+                  CYBER GUARD
                 </span>
               </div>
-              <p className="text-[11px] text-rose-800/70 hidden sm:block font-medium">
+              <p className="text-[11px] text-slate-400 hidden sm:flex items-center gap-1 font-medium">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
                 {t.appTagline}
               </p>
             </div>
           </div>
 
-          {/* Quick Utility Links with Deep Rose Accents & Multi-Language Dropdown */}
+          {/* Header Action Buttons & User Login */}
           <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 text-xs w-full sm:w-auto justify-end">
+            {/* Multilingual AI Chat Copilot Button */}
+            <button
+              type="button"
+              onClick={() => setIsAiChatOpen(true)}
+              className="px-2.5 py-1.5 rounded-xl bg-gradient-to-r from-teal-600 via-emerald-600 to-teal-700 hover:from-teal-500 hover:to-emerald-500 text-white font-extrabold shadow-sm transition-all flex items-center gap-1.5 cursor-pointer ring-1 ring-emerald-400/40"
+              title="Ask SafeUPI AI Copilot in any language (Telugu, Hindi, Tamil, English, etc.)"
+            >
+              <Bot className="w-3.5 h-3.5 text-white" />
+              <span>AI Chat</span>
+              <span className="w-1.5 h-1.5 rounded-full bg-cyan-300 animate-ping" />
+            </button>
+
+            {/* Cyber Terminal CLI Prompts Button */}
+            <button
+              type="button"
+              onClick={() => setIsTerminalOpen(true)}
+              className="px-2.5 py-1.5 rounded-xl bg-slate-850 hover:bg-slate-800 text-emerald-300 font-mono border border-slate-750 font-bold transition-all flex items-center gap-1.5 cursor-pointer"
+              title="Open Cyber Security Terminal Prompts (CLI)"
+            >
+              <Terminal className="w-3.5 h-3.5 text-emerald-400" />
+              <span className="hidden sm:inline">Terminal</span>
+            </button>
+
+            {/* Primary User Login Button (Directly answers "Where is user login") */}
+            <button
+              type="button"
+              id="btn-header-user-login"
+              onClick={() => setIsLoginModalOpen(true)}
+              className={`px-3 py-1.5 rounded-xl font-bold transition-all flex items-center gap-2 cursor-pointer shadow-sm ${
+                isLoggedIn 
+                  ? "bg-slate-800 hover:bg-slate-750 text-white border border-slate-700 hover:border-emerald-500/60" 
+                  : "bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-500 text-white shadow-lg shadow-emerald-900/40 ring-2 ring-emerald-400/50 animate-pulse"
+              }`}
+              title={isLoggedIn ? `Logged in as ${activeProfile.name} - Click to switch profile or manage session` : "Click to Sign In or choose a testing account"}
+            >
+              {isLoggedIn ? (
+                <>
+                  <div className={`w-5 h-5 rounded-lg ${activeProfile.avatarBg} text-white text-[10px] font-extrabold flex items-center justify-center shrink-0`}>
+                    {activeProfile.avatarText}
+                  </div>
+                  <div className="flex flex-col text-left leading-none">
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-[11px] font-extrabold text-white">{activeProfile.name.split(" ")[0]}</span>
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                    </div>
+                    <span className="text-[9px] text-emerald-400 font-mono">User Login</span>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <LogIn className="w-3.5 h-3.5 text-white" />
+                  <span className="text-xs font-black">User Login</span>
+                </>
+              )}
+            </button>
+
+            {/* Persona Switcher Quick Button */}
+            <button
+              type="button"
+              onClick={() => setIsProfileModalOpen(true)}
+              className="px-2.5 py-1.5 rounded-xl bg-slate-850 hover:bg-slate-800 text-slate-200 border border-slate-700 text-xs font-semibold transition-all flex items-center gap-1.5 cursor-pointer"
+              title="Switch between 5 testing personas (Aarav, Ramesh Chandra Senior, Priya, Vikram, Meera)"
+            >
+              <User className="w-3.5 h-3.5 text-cyan-400" />
+              <span className="hidden sm:inline">Personas</span>
+            </button>
+
             {/* Multi-Language Selector Dropdown */}
-            <div className="flex items-center gap-1 bg-rose-50 px-2 py-1 rounded-xl border border-rose-200">
-              <Globe className="w-3.5 h-3.5 text-rose-700 shrink-0" />
+            <div className="flex items-center gap-1 bg-slate-850 px-2 py-1 rounded-xl border border-slate-750">
+              <Globe className="w-3.5 h-3.5 text-teal-400 shrink-0" />
               <select
                 id="header-language-select"
                 value={currentLang}
@@ -700,22 +861,22 @@ export const SafeUpiApp: React.FC<SafeUpiAppProps> = ({
                     regionalVoice.setLanguage(langToVoiceMap[newLang] as any);
                   }
                 }}
-                className="bg-transparent text-xs font-bold text-rose-950 focus:outline-none cursor-pointer pr-1"
+                className="bg-transparent text-xs font-bold text-slate-200 focus:outline-none cursor-pointer pr-1"
                 aria-label="Select Language"
               >
-                <option value="en">English</option>
-                <option value="te">తెలుగు (Telugu)</option>
-                <option value="hi">हिन्दी (Hindi)</option>
-                <option value="ta">தமிழ் (Tamil)</option>
-                <option value="kn">ಕನ್ನಡ (Kannada)</option>
-                <option value="mr">मराठी (Marathi)</option>
+                <option value="en" className="bg-slate-900 text-white">English</option>
+                <option value="te" className="bg-slate-900 text-white">తెలుగు (Telugu)</option>
+                <option value="hi" className="bg-slate-900 text-white">हिन्दी (Hindi)</option>
+                <option value="ta" className="bg-slate-900 text-white">தமிழ் (Tamil)</option>
+                <option value="kn" className="bg-slate-900 text-white">ಕನ್ನಡ (Kannada)</option>
+                <option value="mr" className="bg-slate-900 text-white">मराठी (Marathi)</option>
               </select>
             </div>
 
             {/* Interactive Demo Video Walkthrough */}
             <button
               onClick={() => setIsDemoVideoOpen(true)}
-              className="px-2.5 py-1.5 rounded-xl bg-gradient-to-r from-rose-600 to-rose-700 hover:from-rose-500 hover:to-rose-600 text-white font-extrabold shadow-2xs transition-all flex items-center gap-1.5 cursor-pointer"
+              className="px-2.5 py-1.5 rounded-xl bg-gradient-to-r from-rose-600 to-rose-700 hover:from-rose-500 hover:to-rose-600 text-white font-extrabold shadow-sm transition-all flex items-center gap-1.5 cursor-pointer"
               title="Watch 6-Part Interactive Live Demo Walkthrough"
             >
               <Play className="w-3.5 h-3.5 fill-white text-white" />
@@ -725,26 +886,36 @@ export const SafeUpiApp: React.FC<SafeUpiAppProps> = ({
             {/* Jury / Technical View Toggle */}
             <button
               onClick={() => setIsJuryModalOpen(true)}
-              className="px-2.5 py-1.5 rounded-xl bg-indigo-50 hover:bg-indigo-100 text-indigo-900 font-bold border border-indigo-200 transition-colors flex items-center gap-1.5 cursor-pointer"
-              title="Inspect ML Feature Vector and Random Forest Decision Architecture"
+              className="px-2.5 py-1.5 rounded-xl bg-indigo-950/80 hover:bg-indigo-900 text-indigo-200 font-bold border border-indigo-700/50 transition-colors flex items-center gap-1.5 cursor-pointer"
+              title="Inspect ML Feature Vector and Decision Architecture"
             >
-              <Cpu className="w-3.5 h-3.5 text-indigo-700" />
+              <Cpu className="w-3.5 h-3.5 text-indigo-400" />
               <span>{t.technicalJuryView}</span>
+            </button>
+
+            {/* Documentation & Flow Chart PDF Button */}
+            <button
+              onClick={() => setIsDocModalOpen(true)}
+              className="px-2.5 py-1.5 rounded-xl bg-emerald-950/80 hover:bg-emerald-900 text-emerald-200 font-bold border border-emerald-700/50 transition-colors flex items-center gap-1.5 cursor-pointer shadow-xs"
+              title="View Project Documentation, Architecture Flow Chart & Download PDF"
+            >
+              <FileText className="w-3.5 h-3.5 text-emerald-400" />
+              <span>Docs & PDF</span>
             </button>
 
             {onOpenHowToUse && (
               <button
                 onClick={onOpenHowToUse}
-                className="px-2.5 py-1.5 rounded-xl text-rose-900 hover:text-rose-950 hover:bg-rose-50 font-semibold transition-colors flex items-center gap-1"
+                className="px-2.5 py-1.5 rounded-xl text-slate-300 hover:text-white hover:bg-slate-800 font-semibold transition-colors flex items-center gap-1 cursor-pointer"
               >
-                <HelpCircle className="w-3.5 h-3.5 text-rose-600" />
+                <HelpCircle className="w-3.5 h-3.5 text-slate-400" />
                 <span className="hidden sm:inline">{t.howItWorks}</span>
               </button>
             )}
 
             <button
               onClick={() => setIsQrScannerOpen(true)}
-              className="px-3 py-1.5 rounded-xl bg-gradient-to-r from-rose-700 to-rose-800 text-white font-bold hover:brightness-110 shadow-xs transition-all flex items-center gap-1.5 cursor-pointer"
+              className="px-3 py-1.5 rounded-xl bg-gradient-to-r from-teal-600 to-emerald-600 hover:brightness-110 text-white font-bold shadow-md transition-all flex items-center gap-1.5 cursor-pointer"
               title="Scan any UPI QR Code"
             >
               <QrCode className="w-3.5 h-3.5" />
@@ -754,17 +925,17 @@ export const SafeUpiApp: React.FC<SafeUpiAppProps> = ({
         </div>
 
         {/* Global Navigation Bar */}
-        <div className="max-w-5xl mx-auto px-4 pb-2.5 pt-1 overflow-x-auto">
-          <div className="flex items-center gap-1.5 bg-rose-50/60 p-1 rounded-2xl border border-rose-200/80 min-w-max">
+        <div className="max-w-5xl mx-auto px-4 pb-2.5 pt-1 overflow-x-auto relative z-10">
+          <div className="flex items-center gap-1.5 bg-slate-900/90 p-1 rounded-2xl border border-slate-800 min-w-max">
             <button
               onClick={() => { setMainTab("pay"); setCurrentScreen("HOME"); }}
               className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
                 mainTab === "pay"
-                  ? "bg-white text-rose-950 shadow-xs border border-rose-200"
-                  : "text-rose-900 hover:bg-rose-100/60"
+                  ? "bg-slate-800 text-white shadow-xs border border-slate-700"
+                  : "text-slate-400 hover:bg-slate-800/60 hover:text-slate-200"
               }`}
             >
-              <CreditCard className="w-3.5 h-3.5 text-rose-700" />
+              <CreditCard className="w-3.5 h-3.5 text-emerald-400" />
               <span>{t.navPay}</span>
             </button>
 
@@ -772,11 +943,11 @@ export const SafeUpiApp: React.FC<SafeUpiAppProps> = ({
               onClick={() => setMainTab("verify")}
               className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
                 mainTab === "verify"
-                  ? "bg-white text-rose-950 shadow-xs border border-rose-200"
-                  : "text-rose-900 hover:bg-rose-100/60"
+                  ? "bg-slate-800 text-white shadow-xs border border-slate-700"
+                  : "text-slate-400 hover:bg-slate-800/60 hover:text-slate-200"
               }`}
             >
-              <Camera className="w-3.5 h-3.5 text-rose-700" />
+              <Camera className="w-3.5 h-3.5 text-cyan-400" />
               <span>{t.navVerify}</span>
             </button>
 
@@ -784,11 +955,11 @@ export const SafeUpiApp: React.FC<SafeUpiAppProps> = ({
               onClick={() => setMainTab("dashboard")}
               className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
                 mainTab === "dashboard"
-                  ? "bg-white text-rose-950 shadow-xs border border-rose-200"
-                  : "text-rose-900 hover:bg-rose-100/60"
+                  ? "bg-slate-800 text-white shadow-xs border border-slate-700"
+                  : "text-slate-400 hover:bg-slate-800/60 hover:text-slate-200"
               }`}
             >
-              <BarChart3 className="w-3.5 h-3.5 text-rose-700" />
+              <BarChart3 className="w-3.5 h-3.5 text-teal-400" />
               <span>{t.navDashboard}</span>
             </button>
 
@@ -796,11 +967,11 @@ export const SafeUpiApp: React.FC<SafeUpiAppProps> = ({
               onClick={() => setMainTab("recovery")}
               className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
                 mainTab === "recovery"
-                  ? "bg-white text-rose-950 shadow-xs border border-rose-200"
-                  : "text-rose-900 hover:bg-rose-100/60"
+                  ? "bg-slate-800 text-white shadow-xs border border-slate-700"
+                  : "text-slate-400 hover:bg-slate-800/60 hover:text-slate-200"
               }`}
             >
-              <ShieldAlert className="w-3.5 h-3.5 text-rose-700" />
+              <ShieldAlert className="w-3.5 h-3.5 text-rose-400" />
               <span>{t.navRecovery}</span>
             </button>
 
@@ -808,12 +979,33 @@ export const SafeUpiApp: React.FC<SafeUpiAppProps> = ({
               onClick={() => setMainTab("simulator")}
               className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
                 mainTab === "simulator"
-                  ? "bg-white text-rose-950 shadow-xs border border-rose-200"
-                  : "text-rose-900 hover:bg-rose-100/60"
+                  ? "bg-slate-800 text-white shadow-xs border border-slate-700"
+                  : "text-slate-400 hover:bg-slate-800/60 hover:text-slate-200"
               }`}
             >
-              <Sparkles className="w-3.5 h-3.5 text-rose-700" />
+              <Sparkles className="w-3.5 h-3.5 text-amber-400" />
               <span>{t.navLearn}</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setIsAiChatOpen(true)}
+              className="px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer bg-gradient-to-r from-emerald-950/80 to-teal-950/80 text-emerald-300 border border-emerald-500/40 hover:border-emerald-400"
+              title="Open Multilingual AI Chat Copilot"
+            >
+              <Bot className="w-3.5 h-3.5 text-teal-400" />
+              <span>AI Chat</span>
+              <span className="w-1.5 h-1.5 rounded-full bg-cyan-300 animate-pulse" />
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setIsTerminalOpen(true)}
+              className="px-3 py-1.5 rounded-xl text-xs font-mono font-bold transition-all flex items-center gap-1.5 cursor-pointer bg-slate-950 text-emerald-400 border border-slate-750 hover:border-emerald-500/40"
+              title="Open Cyber Security Terminal Prompts"
+            >
+              <Terminal className="w-3.5 h-3.5 text-cyan-400" />
+              <span>Terminal CLI</span>
             </button>
           </div>
         </div>
@@ -829,77 +1021,34 @@ export const SafeUpiApp: React.FC<SafeUpiAppProps> = ({
                ========================================================================= */}
         {currentScreen === "HOME" && (
           <div className="space-y-6 animate-in fade-in duration-200">
-            {/* Deep Rose Hero Banner with Language Badge & Tagline */}
-            <div className="text-center space-y-2">
-              <div className="inline-flex items-center justify-center w-14 h-14 rounded-3xl bg-gradient-to-tr from-rose-700 via-rose-800 to-rose-900 text-white shadow-lg shadow-rose-800/25 mb-1">
+            {/* Cyber Hero Banner with Security Badge & Tagline */}
+            <div className="text-center space-y-2.5">
+              <div className="inline-flex items-center justify-center w-14 h-14 rounded-3xl bg-gradient-to-tr from-emerald-600 via-teal-600 to-cyan-600 text-white shadow-xl shadow-emerald-950/60 ring-2 ring-emerald-400/40 mb-1">
                 <ShieldCheck className="w-7 h-7" />
               </div>
-              <h1 className="text-2xl sm:text-3xl font-extrabold text-rose-950 tracking-tight">
+              <h1 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
                 {t.appName}
               </h1>
-              <p className="text-sm font-bold text-rose-800">
+              <p className="text-sm font-bold text-emerald-400">
                 {t.appTagline}
               </p>
-              <p className="text-xs sm:text-sm text-slate-600 max-w-md mx-auto leading-relaxed">
+              <p className="text-xs sm:text-sm text-slate-400 max-w-md mx-auto leading-relaxed">
                 &ldquo;{t.appSubQuote}&rdquo;
               </p>
-
-              {/* High-Visibility Multi-Language Switcher Pills */}
-              <div className="pt-2 flex flex-wrap items-center justify-center gap-1.5 max-w-md mx-auto">
-                <span className="text-[11px] font-bold text-slate-500 mr-1 flex items-center gap-1">
-                  <Languages className="w-3.5 h-3.5 text-rose-700" />
-                  <span>{t.languageSelectLabel}:</span>
-                </span>
-                {[
-                  { code: "en", label: "English" },
-                  { code: "te", label: "తెలుగు (Telugu)" },
-                  { code: "hi", label: "हिन्दी (Hindi)" },
-                  { code: "ta", label: "தமிழ்" },
-                  { code: "kn", label: "ಕನ್ನಡ" },
-                  { code: "mr", label: "मराठी" },
-                ].map((item) => (
-                  <button
-                    key={item.code}
-                    type="button"
-                    onClick={() => {
-                      const l = item.code as SupportedLang;
-                      setCurrentLang(l);
-                      const langToVoiceMap: Record<SupportedLang, string> = {
-                        en: "en-IN",
-                        te: "te-IN",
-                        hi: "hi-IN",
-                        ta: "ta-IN",
-                        kn: "kn-IN",
-                        mr: "mr-IN"
-                      };
-                      if (langToVoiceMap[l]) {
-                        regionalVoice.setLanguage(langToVoiceMap[l] as any);
-                      }
-                    }}
-                    className={`px-2.5 py-1 rounded-full text-xs font-bold transition-all cursor-pointer ${
-                      currentLang === item.code
-                        ? "bg-rose-700 text-white shadow-xs scale-105"
-                        : "bg-white text-slate-700 hover:bg-rose-100/70 border border-rose-200"
-                    }`}
-                  >
-                    {item.label}
-                  </button>
-                ))}
-              </div>
             </div>
 
             {/* QR Code Scanner CTA Card */}
-            <div className="bg-gradient-to-r from-rose-800 via-rose-900 to-rose-950 rounded-2xl p-3.5 text-white shadow-md flex items-center justify-between gap-3 border border-rose-700/50">
-              <div className="flex items-center gap-2.5">
-                <div className="w-10 h-10 rounded-xl bg-rose-500/20 border border-rose-400/30 flex items-center justify-center text-rose-200 shrink-0">
-                  <QrCode className="w-5 h-5" />
+            <div className="bg-gradient-to-r from-slate-900 via-slate-850 to-slate-900 rounded-2xl p-4 text-white shadow-xl flex items-center justify-between gap-3 border border-emerald-500/30">
+              <div className="flex items-center gap-3">
+                <div className="w-11 h-11 rounded-xl bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center text-emerald-400 shrink-0">
+                  <QrCode className="w-6 h-6" />
                 </div>
                 <div>
                   <h3 className="text-xs font-extrabold text-white flex items-center gap-1.5">
                     <span>Scan UPI QR Code</span>
-                    <span className="text-[9px] bg-rose-500/30 text-rose-200 px-1.5 py-0.2 rounded-md font-mono">Camera / URI</span>
+                    <span className="text-[9px] bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 px-1.5 py-0.2 rounded-md font-mono">Camera / URI</span>
                   </h3>
-                  <p className="text-[11px] text-rose-200/90 leading-tight">
+                  <p className="text-[11px] text-slate-300 leading-tight">
                     Scan merchant or peer QR with instant risk verification
                   </p>
                 </div>
@@ -908,24 +1057,24 @@ export const SafeUpiApp: React.FC<SafeUpiAppProps> = ({
               <button
                 type="button"
                 onClick={() => setIsQrScannerOpen(true)}
-                className="px-3.5 py-2 rounded-xl bg-white hover:bg-rose-50 text-rose-950 font-extrabold text-xs shadow-xs transition-all flex items-center gap-1.5 shrink-0 cursor-pointer"
+                className="px-3.5 py-2 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-extrabold text-xs shadow-md transition-all flex items-center gap-1.5 shrink-0 cursor-pointer"
               >
-                <Camera className="w-3.5 h-3.5 text-rose-700" />
+                <Camera className="w-3.5 h-3.5 text-white" />
                 <span>Open Scanner</span>
               </button>
             </div>
 
             {/* Scanned QR Notification Alert */}
             {scannedQrNotification && (
-              <div className="p-3 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-900 text-xs flex items-center justify-between gap-2 animate-in fade-in shadow-xs">
+              <div className="p-3 rounded-2xl bg-emerald-950/70 border border-emerald-500/40 text-emerald-200 text-xs flex items-center justify-between gap-2 animate-in fade-in shadow-md">
                 <div className="flex items-center gap-2 font-medium">
-                  <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                  <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
                   <span>{scannedQrNotification}</span>
                 </div>
                 <button 
                   type="button" 
                   onClick={() => setScannedQrNotification(null)}
-                  className="text-emerald-700 hover:text-emerald-900 cursor-pointer"
+                  className="text-emerald-400 hover:text-emerald-200 cursor-pointer"
                 >
                   <X className="w-3.5 h-3.5" />
                 </button>
@@ -933,14 +1082,14 @@ export const SafeUpiApp: React.FC<SafeUpiAppProps> = ({
             )}
 
             {/* In-App Action Mode Switcher: "Send / Pay via UPI" vs "Check a Payment" */}
-            <div className="bg-white/95 border border-rose-200 rounded-2xl p-1.5 shadow-sm flex items-center gap-1.5">
+            <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-1.5 shadow-xl flex items-center gap-1.5">
               <button
                 type="button"
                 onClick={() => setActiveTabMode("pay")}
-                className={`flex-1 py-2.5 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 ${
+                className={`flex-1 py-2.5 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 cursor-pointer ${
                   activeTabMode === "pay"
-                    ? "bg-rose-700 text-white shadow-sm shadow-rose-700/20"
-                    : "text-rose-900 hover:bg-rose-50/80"
+                    ? "bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-md shadow-emerald-950/50 border border-emerald-500/40"
+                    : "text-slate-400 hover:bg-slate-800/80 hover:text-slate-200"
                 }`}
               >
                 <Send className="w-3.5 h-3.5" />
@@ -950,10 +1099,10 @@ export const SafeUpiApp: React.FC<SafeUpiAppProps> = ({
               <button
                 type="button"
                 onClick={() => setActiveTabMode("check")}
-                className={`flex-1 py-2.5 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 ${
+                className={`flex-1 py-2.5 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 cursor-pointer ${
                   activeTabMode === "check"
-                    ? "bg-rose-700 text-white shadow-sm shadow-rose-700/20"
-                    : "text-rose-900 hover:bg-rose-50/80"
+                    ? "bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-md shadow-emerald-950/50 border border-emerald-500/40"
+                    : "text-slate-400 hover:bg-slate-800/80 hover:text-slate-200"
                 }`}
               >
                 <ShieldCheck className="w-3.5 h-3.5" />
@@ -961,13 +1110,16 @@ export const SafeUpiApp: React.FC<SafeUpiAppProps> = ({
               </button>
             </div>
 
-            {/* Quick Demo Scenario Switcher Pills with Deep Rose Styling */}
-            <div className="bg-white border border-rose-200/90 rounded-2xl p-3.5 shadow-sm space-y-2.5">
-              <div className="flex items-center justify-between text-[11px] text-rose-900 px-1 font-semibold">
-                <span>{t.quickDemoTests}</span>
+            {/* Quick Demo Scenario Switcher Pills with Dark Cyber Styling */}
+            <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-4 shadow-xl space-y-3">
+              <div className="flex items-center justify-between text-[11px] text-slate-300 px-1 font-semibold">
+                <span className="flex items-center gap-1.5">
+                  <Sparkles className="w-3.5 h-3.5 text-emerald-400" />
+                  {t.quickDemoTests}
+                </span>
                 <button
                   onClick={() => setIsUploaderOpen(!isUploaderOpen)}
-                  className="text-rose-700 font-bold hover:underline flex items-center gap-1"
+                  className="text-emerald-400 font-bold hover:underline flex items-center gap-1 cursor-pointer"
                 >
                   <span>📷 {t.scanScreenshot}</span>
                 </button>
@@ -977,85 +1129,86 @@ export const SafeUpiApp: React.FC<SafeUpiAppProps> = ({
                 <button
                   type="button"
                   onClick={() => loadPreset("safe")}
-                  className={`p-2 rounded-xl text-center border transition-all text-xs font-semibold ${
+                  className={`p-2.5 rounded-xl text-center border transition-all text-xs font-semibold cursor-pointer ${
                     amount === 250 && recipient === "Swiggy"
-                      ? "bg-emerald-50 text-emerald-800 border-emerald-300 ring-1 ring-emerald-300 shadow-2xs"
-                      : "bg-rose-50/40 text-slate-700 border-rose-100 hover:bg-emerald-50/50"
+                      ? "bg-emerald-950 text-emerald-200 border-emerald-500 ring-1 ring-emerald-500 shadow-md"
+                      : "bg-slate-850/80 text-slate-300 border-slate-750 hover:bg-slate-800 hover:border-emerald-500/50"
                   }`}
                 >
-                  <span className="block text-[10px] text-emerald-700 font-bold">{t.approved}</span>
+                  <span className="block text-[10px] text-emerald-400 font-bold">{t.approved}</span>
                   ₹250 Swiggy
                 </button>
 
                 <button
                   type="button"
                   onClick={() => loadPreset("review")}
-                  className={`p-2 rounded-xl text-center border transition-all text-xs font-semibold ${
+                  className={`p-2.5 rounded-xl text-center border transition-all text-xs font-semibold cursor-pointer ${
                     amount === 5000 && recipient === "friend@upi"
-                      ? "bg-amber-50 text-amber-900 border-amber-300 ring-1 ring-amber-300 shadow-2xs"
-                      : "bg-rose-50/40 text-slate-700 border-rose-100 hover:bg-amber-50/50"
+                      ? "bg-amber-950 text-amber-200 border-amber-500 ring-1 ring-amber-500 shadow-md"
+                      : "bg-slate-850/80 text-slate-300 border-slate-750 hover:bg-slate-800 hover:border-amber-500/50"
                   }`}
                 >
-                  <span className="block text-[10px] text-amber-800 font-bold">{t.reviewCheck}</span>
+                  <span className="block text-[10px] text-amber-400 font-bold">{t.reviewCheck}</span>
                   ₹5,000 Night
                 </button>
 
                 <button
                   type="button"
                   onClick={() => loadPreset("blocked")}
-                  className={`p-2 rounded-xl text-center border transition-all text-xs font-semibold ${
+                  className={`p-2.5 rounded-xl text-center border transition-all text-xs font-semibold cursor-pointer ${
                     amount === 9999 && !activePhoneCall && !isCollectRequest
-                      ? "bg-rose-100 text-rose-950 border-rose-300 ring-1 ring-rose-400 shadow-2xs"
-                      : "bg-rose-50/40 text-slate-700 border-rose-100 hover:bg-rose-100/50"
+                      ? "bg-rose-950 text-rose-200 border-rose-500 ring-1 ring-rose-500 shadow-md"
+                      : "bg-slate-850/80 text-slate-300 border-slate-750 hover:bg-slate-800 hover:border-rose-500/50"
                   }`}
                 >
-                  <span className="block text-[10px] text-rose-700 font-bold">{t.blockedScam}</span>
+                  <span className="block text-[10px] text-rose-400 font-bold">{t.blockedScam}</span>
                   ₹9,999 Trap
                 </button>
               </div>
 
               {/* ASTRA 2026 Co-Pilot Demo Presets */}
-              <div className="pt-1">
-                <div className="text-[10px] font-bold text-slate-500 mb-1.5 uppercase tracking-wider flex items-center gap-1">
-                  <span>⚡ ASTRA Advanced Co-Pilot Scenarios:</span>
+              <div className="pt-1.5 border-t border-slate-800/80">
+                <div className="text-[10px] font-bold text-slate-400 mb-2 uppercase tracking-wider flex items-center gap-1.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse" />
+                  <span>ASTRA Advanced Co-Pilot Scenarios:</span>
                 </div>
                 <div className="grid grid-cols-3 gap-2">
                   <button
                     type="button"
                     onClick={() => loadPreset("call_scam")}
-                    className={`p-2 rounded-xl text-center border transition-all text-xs font-semibold ${
+                    className={`p-2.5 rounded-xl text-center border transition-all text-xs font-semibold cursor-pointer ${
                       activePhoneCall
-                        ? "bg-purple-100 text-purple-950 border-purple-400 ring-1 ring-purple-400 shadow-2xs"
-                        : "bg-purple-50/60 text-purple-900 border-purple-100 hover:bg-purple-100/60"
+                        ? "bg-purple-950 text-purple-200 border-purple-400 ring-1 ring-purple-400 shadow-md"
+                        : "bg-slate-850/80 text-purple-300 border-slate-750 hover:bg-slate-800 hover:border-purple-400/50"
                     }`}
                   >
-                    <span className="block text-[10px] text-purple-700 font-bold">{t.vishingCallDemo}</span>
+                    <span className="block text-[10px] text-purple-400 font-bold">{t.vishingCallDemo}</span>
                     ₹25k Fake Police
                   </button>
 
                   <button
                     type="button"
                     onClick={() => loadPreset("collect_trap")}
-                    className={`p-2 rounded-xl text-center border transition-all text-xs font-semibold ${
+                    className={`p-2.5 rounded-xl text-center border transition-all text-xs font-semibold cursor-pointer ${
                       isCollectRequest
-                        ? "bg-amber-100 text-amber-950 border-amber-400 ring-1 ring-amber-400 shadow-2xs"
-                        : "bg-amber-50/60 text-amber-900 border-amber-100 hover:bg-amber-100/60"
+                        ? "bg-amber-950 text-amber-200 border-amber-400 ring-1 ring-amber-400 shadow-md"
+                        : "bg-slate-850/80 text-amber-300 border-slate-750 hover:bg-slate-800 hover:border-amber-400/50"
                     }`}
                   >
-                    <span className="block text-[10px] text-amber-700 font-bold">{t.collectTrapDemo}</span>
+                    <span className="block text-[10px] text-amber-400 font-bold">{t.collectTrapDemo}</span>
                     ₹14.5k OLX Reversal
                   </button>
 
                   <button
                     type="button"
                     onClick={() => loadPreset("mule_scam")}
-                    className={`p-2 rounded-xl text-center border transition-all text-xs font-semibold ${
+                    className={`p-2.5 rounded-xl text-center border transition-all text-xs font-semibold cursor-pointer ${
                       recipient === "lucky_draw_winner99@ybl"
-                        ? "bg-rose-100 text-rose-950 border-rose-400 ring-1 ring-rose-400 shadow-2xs"
-                        : "bg-rose-50/60 text-rose-900 border-rose-100 hover:bg-rose-100/60"
+                        ? "bg-rose-950 text-rose-200 border-rose-400 ring-1 ring-rose-400 shadow-md"
+                        : "bg-slate-850/80 text-rose-300 border-slate-750 hover:bg-slate-800 hover:border-rose-400/50"
                     }`}
                   >
-                    <span className="block text-[10px] text-rose-700 font-bold">{t.muleScamDemo}</span>
+                    <span className="block text-[10px] text-rose-400 font-bold">{t.muleScamDemo}</span>
                     ₹35k KBC Lottery
                   </button>
                 </div>
@@ -1063,7 +1216,7 @@ export const SafeUpiApp: React.FC<SafeUpiAppProps> = ({
 
               {/* Optional Screenshot scan box */}
               {isUploaderOpen && (
-                <div className="pt-2 border-t border-rose-100">
+                <div className="pt-2 border-t border-slate-800">
                   <TransactionScreenshotUploader 
                     onScanExtracted={handleScreenshotExtracted} 
                     onApplyExtractedPayload={(_payload, scan) => handleScreenshotExtracted(scan)}
@@ -1072,60 +1225,106 @@ export const SafeUpiApp: React.FC<SafeUpiAppProps> = ({
               )}
             </div>
 
-            {/* Live Demo Video & Feature Guide Banner with Download */}
-            <div className="bg-gradient-to-r from-rose-950 via-slate-900 to-rose-950 border border-rose-500/30 rounded-2xl p-3.5 sm:p-4 text-white shadow-md flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3.5">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-rose-500 to-rose-700 flex items-center justify-center text-white font-black shadow-sm shrink-0">
-                  <Play className="w-5 h-5 fill-white ml-0.5" />
-                </div>
-                <div>
-                  <div className="flex items-center gap-2">
-                    <h3 className="text-xs sm:text-sm font-extrabold text-white">
-                      {t.appTourTitle}
-                    </h3>
-                    <span className="px-2 py-0.5 rounded-full text-[9px] font-bold bg-rose-500/20 text-rose-300 border border-rose-500/30">
-                      {t.appTourBadge}
-                    </span>
+            {/* User Authentication & Banking Profile Status Card */}
+            {isLoggedIn ? (
+              <div className="bg-gradient-to-r from-slate-900 via-slate-850 to-slate-900 rounded-3xl p-5 text-white shadow-xl border border-slate-750 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 relative overflow-hidden">
+                <div className="absolute top-0 right-0 w-64 h-32 bg-emerald-500/5 blur-3xl pointer-events-none" />
+                <div className="flex items-center gap-3.5 relative z-10">
+                  <div className={`w-12 h-12 rounded-2xl ${activeProfile.avatarBg} text-white flex items-center justify-center font-extrabold text-base shadow-inner shrink-0 ring-2 ring-emerald-500/30`}>
+                    {activeProfile.avatarText}
                   </div>
-                  <p className="text-[11px] text-slate-300 mt-0.5">
-                    {t.appTourDesc}
-                  </p>
+                  <div className="space-y-0.5">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="font-extrabold text-base text-white tracking-tight">
+                        {activeProfile.name}
+                      </span>
+                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${activeProfile.badgeColor}`}>
+                        {activeProfile.roleLabel.split("(")[0].trim()}
+                      </span>
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 flex items-center gap-1">
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                        Authenticated
+                      </span>
+                    </div>
+                    <div className="text-xs text-slate-300 flex items-center gap-2 font-mono">
+                      <Building2 className="w-3.5 h-3.5 text-emerald-400" />
+                      <span>{activeProfile.bankName} ({activeProfile.accountNumberMasked})</span>
+                      <span>•</span>
+                      <span className="text-emerald-400 font-bold">Bal: ₹{activeProfile.accountBalance.toLocaleString("en-IN")}</span>
+                    </div>
+                    <div className="text-[11px] text-slate-400 font-mono flex items-center gap-2">
+                      <span>UPI: <strong className="text-emerald-300">{activeProfile.upiId}</strong></span>
+                      <span>•</span>
+                      <span>PIN: <strong className="text-amber-300">{activeProfile.defaultPin}</strong></span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2 w-full sm:w-auto justify-end relative z-10">
+                  <button
+                    type="button"
+                    id="btn-switch-user-login"
+                    onClick={() => setIsLoginModalOpen(true)}
+                    className="px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition-all flex items-center gap-1.5 shadow-md shadow-emerald-900/30 cursor-pointer"
+                    title="Switch user account or sign in with another phone"
+                  >
+                    <User className="w-3.5 h-3.5" />
+                    <span>Switch / User Login</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setIsLoggedIn(false)}
+                    className="px-2.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 hover:text-rose-300 text-slate-300 text-xs font-medium border border-slate-700 transition-all flex items-center gap-1 cursor-pointer"
+                    title="Log out of current session"
+                  >
+                    <LogOut className="w-3.5 h-3.5" />
+                    <span className="hidden sm:inline">Logout</span>
+                  </button>
                 </div>
               </div>
+            ) : (
+              <div className="bg-gradient-to-r from-slate-900 via-slate-850 to-slate-900 rounded-3xl p-5 sm:p-6 text-white shadow-2xl border-2 border-emerald-500/40 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                <div className="flex items-start gap-3.5">
+                  <div className="w-12 h-12 rounded-2xl bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 flex items-center justify-center font-extrabold text-base shadow-inner shrink-0">
+                    <Lock className="w-6 h-6" />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <span className="font-extrabold text-base text-white">User Login Required</span>
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                        Guest Mode
+                      </span>
+                    </div>
+                    <p className="text-xs text-slate-300 mt-0.5 max-w-lg">
+                      Sign in with your registered mobile (+91) or select a pre-configured testing account to authenticate and authorize live UPI payments.
+                    </p>
+                  </div>
+                </div>
 
-              <div className="flex items-center gap-2 w-full sm:w-auto shrink-0 justify-end">
-                <button
-                  type="button"
-                  onClick={() => setIsDemoVideoOpen(true)}
-                  className="px-3 py-1.5 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-extrabold text-xs shadow-xs transition-all flex items-center gap-1.5 cursor-pointer"
-                >
-                  <Play className="w-3.5 h-3.5 fill-white" />
-                  <span>{t.watchDemoVideo}</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => downloadDemoVideoHtml()}
-                  className="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 font-bold text-xs transition-all flex items-center gap-1.5 cursor-pointer"
-                  title="Download offline demo video player HTML5 file"
-                >
-                  <Download className="w-3.5 h-3.5 text-emerald-400" />
-                  <span className="hidden sm:inline">{t.downloadVideo}</span>
-                </button>
+                <div className="w-full sm:w-auto flex items-center justify-end">
+                  <button
+                    type="button"
+                    onClick={() => setIsLoginModalOpen(true)}
+                    className="w-full sm:w-auto px-5 py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-500 hover:from-emerald-500 hover:to-teal-500 text-white font-extrabold text-xs transition-all flex items-center justify-center gap-2 shadow-lg shadow-emerald-900/40 cursor-pointer"
+                  >
+                    <LogIn className="w-4 h-4" />
+                    <span>User Login / Sign In</span>
+                  </button>
+                </div>
               </div>
-            </div>
+            )}
 
             {/* Main Interactive Card: Live Payment or Verification Form */}
-            <div className="bg-white border border-rose-200 rounded-3xl p-6 sm:p-7 shadow-sm space-y-5">
-              <div className="border-b border-rose-100 pb-3 flex items-center justify-between">
+            <div className="bg-slate-900/90 border border-slate-800 rounded-3xl p-6 sm:p-7 shadow-2xl space-y-5 text-slate-100">
+              <div className="border-b border-slate-800 pb-3.5 flex items-center justify-between">
                 <div>
-                  <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
+                  <h2 className="text-base font-bold text-white flex items-center gap-2">
                     {activeTabMode === "pay" ? t.transmitSafePayment : t.checkingPaymentTitle}
-                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-rose-100 text-rose-800">
-                      {t.safeUpiShieldActive}
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                      Zero-PII Shield Active
                     </span>
                   </h2>
-                  <p className="text-xs text-slate-500 mt-0.5">
+                  <p className="text-xs text-slate-400 mt-0.5">
                     {activeTabMode === "pay" 
                       ? t.paySubtitle
                       : t.checkSubtitle}
@@ -1137,11 +1336,11 @@ export const SafeUpiApp: React.FC<SafeUpiAppProps> = ({
               <div className="space-y-4">
                 {/* Amount */}
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 sm:gap-4">
-                  <label className="text-sm font-bold text-slate-800 shrink-0">
+                  <label className="text-sm font-bold text-slate-200 shrink-0">
                     {t.amountLabel}
                   </label>
                   <div className="relative flex-1 sm:max-w-xs">
-                    <span className="absolute left-3.5 top-1/2 -translate-y-1/2 font-bold text-rose-600 text-lg">
+                    <span className="absolute left-3.5 top-1/2 -translate-y-1/2 font-bold text-emerald-400 text-lg">
                       ₹
                     </span>
                     <input
@@ -1149,14 +1348,14 @@ export const SafeUpiApp: React.FC<SafeUpiAppProps> = ({
                       value={amount || ""}
                       onChange={(e) => setAmount(Number(e.target.value) || 0)}
                       placeholder={t.amountPlaceholder}
-                      className="w-full pl-9 pr-3 py-2.5 rounded-2xl bg-rose-50/40 border border-rose-200 text-slate-900 font-extrabold text-base focus:bg-white focus:border-rose-600 focus:ring-2 focus:ring-rose-500/20 focus:outline-none transition-colors"
+                      className="w-full pl-9 pr-3 py-2.5 rounded-2xl bg-slate-950/80 border border-slate-750 text-white font-extrabold text-base focus:bg-slate-950 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 focus:outline-none transition-colors"
                     />
                   </div>
                 </div>
 
                 {/* To (UPI ID) */}
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 sm:gap-4">
-                  <label className="text-sm font-bold text-slate-800 shrink-0">
+                  <label className="text-sm font-bold text-slate-200 shrink-0">
                     {t.recipientLabel}
                   </label>
                   <div className="flex-1 sm:max-w-xs flex items-center gap-2">
@@ -1165,15 +1364,15 @@ export const SafeUpiApp: React.FC<SafeUpiAppProps> = ({
                       value={recipient}
                       onChange={(e) => setRecipient(e.target.value)}
                       placeholder={t.recipientPlaceholder}
-                      className="w-full px-3.5 py-2.5 rounded-2xl bg-rose-50/40 border border-rose-200 text-slate-900 font-mono text-xs font-semibold focus:bg-white focus:border-rose-600 focus:ring-2 focus:ring-rose-500/20 focus:outline-none transition-colors"
+                      className="w-full px-3.5 py-2.5 rounded-2xl bg-slate-950/80 border border-slate-750 text-white font-mono text-xs font-semibold focus:bg-slate-950 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 focus:outline-none transition-colors"
                     />
                     <button
                       type="button"
                       onClick={() => setIsQrScannerOpen(true)}
                       title="Scan UPI QR Code"
-                      className="p-2.5 rounded-2xl bg-rose-100 hover:bg-rose-200 text-rose-900 border border-rose-200 transition-colors shrink-0 cursor-pointer"
+                      className="p-2.5 rounded-2xl bg-slate-800 hover:bg-slate-750 text-emerald-400 border border-slate-700 transition-colors shrink-0 cursor-pointer"
                     >
-                      <QrCode className="w-4 h-4 text-rose-800" />
+                      <QrCode className="w-4 h-4 text-emerald-400" />
                     </button>
                   </div>
                 </div>
@@ -1182,26 +1381,46 @@ export const SafeUpiApp: React.FC<SafeUpiAppProps> = ({
                 {activeTabMode === "pay" && (
                   <>
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 sm:gap-4">
-                      <label className="text-sm font-bold text-slate-800 shrink-0">
+                      <label className="text-sm font-bold text-slate-200 shrink-0">
                         {t.payFromBankLabel}
                       </label>
-                      <div className="flex-1 sm:max-w-xs relative">
-                        <select
-                          value={selectedBank}
-                          onChange={(e) => setSelectedBank(e.target.value)}
-                          className="w-full px-3.5 py-2.5 rounded-2xl bg-rose-50/40 border border-rose-200 text-slate-900 text-xs font-semibold focus:bg-white focus:border-rose-600 focus:outline-none appearance-none"
-                        >
-                          <option value="HDFC Bank (•••• 4021)">HDFC Bank (•••• 4021)</option>
-                          <option value="State Bank of India (•••• 8102)">State Bank of India (•••• 8102)</option>
-                          <option value="ICICI Bank (•••• 1194)">ICICI Bank (•••• 1194)</option>
-                          <option value="Kotak Mahindra Bank (•••• 5521)">Kotak Mahindra Bank (•••• 5521)</option>
-                        </select>
-                        <Landmark className="w-3.5 h-3.5 text-rose-500 absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                      <div className="flex-1 sm:max-w-xs space-y-1">
+                        <div className="relative">
+                          <select
+                            value={selectedBank}
+                            onChange={(e) => {
+                              const newBank = e.target.value;
+                              setSelectedBank(newBank);
+                              const matched = USER_PROFILES.find(
+                                (p) => `${p.bankName} (${p.accountNumberMasked})` === newBank
+                              );
+                              if (matched) {
+                                handleSelectProfile(matched);
+                              }
+                            }}
+                            className="w-full pl-3.5 pr-8 py-2.5 rounded-2xl bg-slate-950/90 border border-slate-750 text-white text-xs font-semibold focus:bg-slate-950 focus:border-emerald-500 focus:outline-none appearance-none"
+                          >
+                            {USER_PROFILES.map((p) => (
+                              <option 
+                                key={p.id} 
+                                value={`${p.bankName} (${p.accountNumberMasked})`}
+                                className="bg-slate-900 text-white"
+                              >
+                                {p.bankName} ({p.accountNumberMasked}) · {p.name.split(" ")[0]}
+                              </option>
+                            ))}
+                          </select>
+                          <Landmark className="w-3.5 h-3.5 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                        </div>
+                        <div className="flex items-center justify-between text-[11px] text-slate-400 px-1">
+                          <span>Balance: <strong className="text-emerald-400 font-mono">₹{activeProfile.accountBalance.toLocaleString("en-IN")}</strong></span>
+                          <span>UPI: <strong className="font-mono text-emerald-300">{activeProfile.upiId}</strong></span>
+                        </div>
                       </div>
                     </div>
 
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 sm:gap-4">
-                      <label className="text-sm font-bold text-slate-800 shrink-0">
+                      <label className="text-sm font-bold text-slate-200 shrink-0">
                         {t.addNoteLabel}
                       </label>
                       <input
@@ -1209,7 +1428,7 @@ export const SafeUpiApp: React.FC<SafeUpiAppProps> = ({
                         value={paymentNote}
                         onChange={(e) => setPaymentNote(e.target.value)}
                         placeholder={t.notePlaceholder}
-                        className="flex-1 sm:max-w-xs px-3.5 py-2.5 rounded-2xl bg-rose-50/40 border border-rose-200 text-slate-900 text-xs font-medium focus:bg-white focus:border-rose-600 focus:outline-none transition-colors"
+                        className="flex-1 sm:max-w-xs px-3.5 py-2.5 rounded-2xl bg-slate-950/80 border border-slate-750 text-white text-xs font-medium focus:bg-slate-950 focus:border-emerald-500 focus:outline-none transition-colors"
                       />
                     </div>
                   </>
@@ -1217,7 +1436,7 @@ export const SafeUpiApp: React.FC<SafeUpiAppProps> = ({
 
                 {/* Time */}
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 sm:gap-4">
-                  <label className="text-sm font-bold text-slate-800 shrink-0">
+                  <label className="text-sm font-bold text-slate-200 shrink-0">
                     {t.timeLabel}
                   </label>
                   <div className="flex items-center gap-2 flex-1 sm:max-w-xs">
@@ -1226,12 +1445,12 @@ export const SafeUpiApp: React.FC<SafeUpiAppProps> = ({
                       value={timeStr}
                       onChange={(e) => setTimeStr(e.target.value)}
                       placeholder="02:00 AM"
-                      className="w-full px-3.5 py-2.5 rounded-2xl bg-rose-50/40 border border-rose-200 text-slate-900 font-medium text-xs focus:bg-white focus:border-rose-600 focus:outline-none transition-colors"
+                      className="w-full px-3.5 py-2.5 rounded-2xl bg-slate-950/80 border border-slate-750 text-white font-medium text-xs focus:bg-slate-950 focus:border-emerald-500 focus:outline-none transition-colors"
                     />
                     <button
                       type="button"
                       onClick={() => setTimeStr(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }))}
-                      className="shrink-0 px-2.5 py-2 rounded-xl bg-rose-100 hover:bg-rose-200 text-[11px] font-bold text-rose-800"
+                      className="shrink-0 px-2.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-750 border border-slate-700 text-[11px] font-bold text-emerald-300 cursor-pointer"
                       title="Set to right now"
                     >
                       {t.nowBtn}
@@ -1240,18 +1459,18 @@ export const SafeUpiApp: React.FC<SafeUpiAppProps> = ({
                 </div>
 
                 {/* New device? radio */}
-                <div className="flex items-center justify-between pt-2 border-t border-rose-100">
-                  <span className="text-sm font-bold text-slate-800">
+                <div className="flex items-center justify-between pt-2 border-t border-slate-800">
+                  <span className="text-sm font-bold text-slate-200">
                     {t.newDeviceQuestion}
                   </span>
-                  <div className="flex items-center gap-4 text-xs font-bold text-slate-800">
+                  <div className="flex items-center gap-4 text-xs font-bold text-slate-200">
                     <label className="flex items-center gap-1.5 cursor-pointer">
                       <input
                         type="radio"
                         name="newDevice"
                         checked={isNewDevice === true}
                         onChange={() => setIsNewDevice(true)}
-                        className="accent-rose-700 w-4 h-4 cursor-pointer"
+                        className="accent-emerald-500 w-4 h-4 cursor-pointer"
                       />
                       <span>{t.yesOption}</span>
                     </label>
@@ -1261,7 +1480,7 @@ export const SafeUpiApp: React.FC<SafeUpiAppProps> = ({
                         name="newDevice"
                         checked={isNewDevice === false}
                         onChange={() => setIsNewDevice(false)}
-                        className="accent-rose-700 w-4 h-4 cursor-pointer"
+                        className="accent-emerald-500 w-4 h-4 cursor-pointer"
                       />
                       <span>{t.noOption}</span>
                     </label>
@@ -1270,17 +1489,17 @@ export const SafeUpiApp: React.FC<SafeUpiAppProps> = ({
 
                 {/* New recipient? radio */}
                 <div className="flex items-center justify-between">
-                  <span className="text-sm font-bold text-slate-800">
+                  <span className="text-sm font-bold text-slate-200">
                     {t.newRecipientQuestion}
                   </span>
-                  <div className="flex items-center gap-4 text-xs font-bold text-slate-800">
+                  <div className="flex items-center gap-4 text-xs font-bold text-slate-200">
                     <label className="flex items-center gap-1.5 cursor-pointer">
                       <input
                         type="radio"
                         name="newRecipient"
                         checked={isNewRecipient === true}
                         onChange={() => setIsNewRecipient(true)}
-                        className="accent-rose-700 w-4 h-4 cursor-pointer"
+                        className="accent-emerald-500 w-4 h-4 cursor-pointer"
                       />
                       <span>{t.yesOption}</span>
                     </label>
@@ -1290,7 +1509,7 @@ export const SafeUpiApp: React.FC<SafeUpiAppProps> = ({
                         name="newRecipient"
                         checked={isNewRecipient === false}
                         onChange={() => setIsNewRecipient(false)}
-                        className="accent-rose-700 w-4 h-4 cursor-pointer"
+                        className="accent-emerald-500 w-4 h-4 cursor-pointer"
                       />
                       <span>{t.noOption}</span>
                     </label>
@@ -1335,75 +1554,262 @@ export const SafeUpiApp: React.FC<SafeUpiAppProps> = ({
                 />
               </div>
 
-              {/* Primary Action Button (Deep Rose, generous padding, high prominence) */}
+              {/* Primary Action Button & Security Status */}
               <div className="pt-2">
-                {/* Safe Verified Badge when risk score is low with scanner active animation */}
-                {isCurrentRiskLow && (
+                {/* =========================================================================
+                    PAYMENT SECURITY STATUS & REAL-TIME SAFETY INDICATORS
+                   ========================================================================= */}
+                <div id="payment-security-status-container" className="space-y-3.5 mb-4">
+                  {/* 1. Payment Security Status Banner */}
                   <div
-                    id="badge-safe-verified"
-                    className="mb-3 p-3 rounded-2xl bg-gradient-to-r from-emerald-950 via-slate-900 to-emerald-950 border border-emerald-500/40 shadow-sm flex items-center justify-between gap-3 animate-in fade-in slide-in-from-bottom-2 duration-300"
+                    id="payment-security-status-card"
+                    className={`p-4 rounded-2xl border transition-all duration-300 shadow-md ${
+                      liveRiskAssessment.isLow
+                        ? "bg-gradient-to-r from-emerald-950/90 via-slate-900 to-emerald-950/90 border-emerald-500/40 text-emerald-100"
+                        : liveRiskAssessment.isMedium
+                        ? "bg-gradient-to-r from-amber-950/90 via-slate-900 to-amber-950/90 border-amber-500/40 text-amber-100"
+                        : "bg-gradient-to-r from-rose-950/95 via-slate-900 to-rose-950/95 border-rose-500/60 text-rose-100 animate-pulse"
+                    }`}
                   >
-                    <div className="flex items-center gap-2.5 min-w-0">
-                      <div className="relative flex items-center justify-center shrink-0">
-                        <div className="w-8 h-8 rounded-xl bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 flex items-center justify-center shadow-inner">
-                          <ShieldCheck className="w-4 h-4 text-emerald-400" />
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                      <div className="flex items-start gap-3 min-w-0">
+                        <div className="relative shrink-0 mt-0.5 sm:mt-0">
+                          <div className={`w-10 h-10 rounded-xl flex items-center justify-center border shadow-inner ${
+                            liveRiskAssessment.isLow
+                              ? "bg-emerald-500/20 text-emerald-400 border-emerald-500/40"
+                              : liveRiskAssessment.isMedium
+                              ? "bg-amber-500/20 text-amber-400 border-amber-500/40"
+                              : "bg-rose-500/20 text-rose-400 border-rose-500/50"
+                          }`}>
+                            {liveRiskAssessment.isLow ? (
+                              <ShieldCheck className="w-5 h-5 text-emerald-400" />
+                            ) : liveRiskAssessment.isMedium ? (
+                              <HelpCircle className="w-5 h-5 text-amber-400" />
+                            ) : (
+                              <ShieldAlert className="w-5 h-5 text-rose-400" />
+                            )}
+                          </div>
+                          <span className="absolute -top-1 -right-1 flex h-2.5 w-2.5">
+                            <span className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${
+                              liveRiskAssessment.isLow ? "bg-emerald-400" : liveRiskAssessment.isMedium ? "bg-amber-400" : "bg-rose-400"
+                            }`} />
+                            <span className={`relative inline-flex rounded-full h-2.5 w-2.5 ${
+                              liveRiskAssessment.isLow ? "bg-emerald-500" : liveRiskAssessment.isMedium ? "bg-amber-500" : "bg-rose-500"
+                            }`} />
+                          </span>
                         </div>
-                        {/* Small radar ping animation signifying scanner checks are actively running */}
-                        <span className="absolute -top-1 -right-1 flex h-2.5 w-2.5">
-                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                          <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
-                        </span>
+
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <h3 className="text-xs font-bold text-slate-300 uppercase tracking-wider">
+                              Payment Security Status
+                            </h3>
+                            <span className={`px-2 py-0.5 rounded-full text-[10px] font-black border ${
+                              liveRiskAssessment.isLow
+                                ? "bg-emerald-500/20 text-emerald-300 border-emerald-500/40"
+                                : liveRiskAssessment.isMedium
+                                ? "bg-amber-500/20 text-amber-300 border-amber-500/40"
+                                : "bg-rose-500/20 text-rose-300 border-rose-500/40"
+                            }`}>
+                              {liveRiskAssessment.isLow 
+                                ? "Verified Safe · Low Risk"
+                                : liveRiskAssessment.isMedium
+                                ? "Caution · Review Recommended"
+                                : "Critical Alert · High Risk"}
+                            </span>
+                          </div>
+                          <p className="text-xs text-slate-200 font-medium mt-0.5">
+                            {liveRiskAssessment.isLow
+                              ? "All real-time safety indicators passed. Payee identity and spending velocity match your normal baseline."
+                              : liveRiskAssessment.isMedium
+                              ? "Telemetry alert: New beneficiary or unusual transaction timing detected. Verify recipient carefully."
+                              : "High-risk trigger intercepted! Known fraud keywords or active coercion detected. Review before proceeding."}
+                          </p>
+                        </div>
                       </div>
-                      <div className="min-w-0">
-                        <div className="flex items-center gap-1.5 flex-wrap">
-                          <span className="text-xs font-extrabold text-emerald-300 flex items-center gap-1">
-                            Safe Verified
-                          </span>
-                          <span className="px-1.5 py-0.5 rounded-md text-[9px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 font-mono">
-                            LOW RISK · {liveEstimatedScore}%
-                          </span>
+
+                      <div className="flex items-center gap-2 shrink-0 self-end sm:self-center">
+                        <button
+                          type="button"
+                          id="btn-share-safe-verification"
+                          onClick={handleCopySafeVerifiedSummary}
+                          title="Copy security verification summary for personal records"
+                          className={`p-2 rounded-xl border transition-all cursor-pointer flex items-center gap-1.5 active:scale-95 text-xs font-bold shadow-xs ${
+                            liveRiskAssessment.isLow
+                              ? "bg-emerald-900/40 hover:bg-emerald-800/60 border-emerald-500/40 text-emerald-300"
+                              : liveRiskAssessment.isMedium
+                              ? "bg-amber-900/40 hover:bg-amber-800/60 border-amber-500/40 text-amber-300"
+                              : "bg-rose-900/40 hover:bg-rose-800/60 border-rose-500/40 text-rose-300"
+                          }`}
+                        >
+                          {copiedSafeVerified ? (
+                            <>
+                              <Check className="w-3.5 h-3.5" />
+                              <span>{t.copied}</span>
+                            </>
+                          ) : (
+                            <>
+                              <Share2 className="w-3.5 h-3.5" />
+                              <span>Share Status</span>
+                            </>
+                          )}
+                        </button>
+                        <div className={`px-2.5 py-1 rounded-xl border text-center font-mono ${
+                          liveRiskAssessment.isLow
+                            ? "bg-emerald-900/50 border-emerald-500/30 text-emerald-300"
+                            : liveRiskAssessment.isMedium
+                            ? "bg-amber-900/50 border-amber-500/30 text-amber-300"
+                            : "bg-rose-900/50 border-rose-500/30 text-rose-300"
+                        }`}>
+                          <div className="text-[9px] uppercase tracking-wider text-slate-400">Confidence</div>
+                          <div className="text-xs font-black">{100 - liveRiskAssessment.score}%</div>
                         </div>
-                        <p className="text-[11px] text-slate-300 truncate mt-0.5">
-                          Scanner active · Trusted payee & standard velocity checks passed
-                        </p>
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-2 shrink-0">
-                      {/* Share icon button to copy security verification summary */}
-                      <button
-                        type="button"
-                        id="btn-share-safe-verification"
-                        onClick={handleCopySafeVerifiedSummary}
-                        title="Copy security verification summary for personal records"
-                        className="p-1.5 rounded-xl bg-emerald-900/40 hover:bg-emerald-800/60 border border-emerald-500/40 text-emerald-300 hover:text-white transition-all cursor-pointer flex items-center gap-1 active:scale-95 shadow-xs"
-                      >
-                        {copiedSafeVerified ? (
-                          <>
-                            <Check className="w-3.5 h-3.5 text-emerald-300" />
-                            <span className="text-[10px] font-bold text-emerald-200 pr-1">Copied!</span>
-                          </>
-                        ) : (
-                          <>
-                            <Share2 className="w-3.5 h-3.5 text-emerald-300" />
-                            <span className="text-[10px] font-medium text-emerald-300/90 hidden sm:inline pr-0.5">Share</span>
-                          </>
-                        )}
-                      </button>
-
-                      <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-emerald-900/50 border border-emerald-500/30 text-emerald-300">
-                        <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-                        <span className="text-[10px] font-mono font-black uppercase tracking-wider">Active</span>
+                    {/* Visual Security Gauge */}
+                    <div className="mt-3 pt-2.5 border-t border-white/10 space-y-1">
+                      <div className="flex items-center justify-between text-[10px] font-bold font-mono">
+                        <span className="text-emerald-400">0% (Safe & Protected)</span>
+                        <span className="text-amber-400">50% (Review Advised)</span>
+                        <span className="text-rose-400">100% (Fraud Blocked)</span>
+                      </div>
+                      <div className="w-full h-2 rounded-full bg-slate-800/90 overflow-hidden relative p-0.5 border border-white/10">
+                        <div
+                          className={`h-full rounded-full transition-all duration-500 ${
+                            liveRiskAssessment.isLow
+                              ? "bg-gradient-to-r from-emerald-500 to-emerald-400"
+                              : liveRiskAssessment.isMedium
+                              ? "bg-gradient-to-r from-emerald-500 via-amber-400 to-amber-500"
+                              : "bg-gradient-to-r from-amber-500 via-rose-500 to-rose-600"
+                          }`}
+                          style={{ width: `${Math.max(5, liveRiskAssessment.score)}%` }}
+                        />
                       </div>
                     </div>
                   </div>
-                )}
+
+                  {/* 2. Real-time Safety Indicators Grid */}
+                  <div className="bg-slate-900/60 rounded-2xl p-3.5 border border-slate-750">
+                    <div className="flex items-center justify-between pb-2 border-b border-slate-800 mb-2.5">
+                      <div className="flex items-center gap-1.5">
+                        <Activity className="w-3.5 h-3.5 text-emerald-400" />
+                        <span className="text-xs font-bold text-slate-200">Real-time Safety Indicators</span>
+                      </div>
+                      <span className="text-[10px] text-emerald-400 font-mono flex items-center gap-1">
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                        Live Sensors Active
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                      {/* Indicator 1: Payee Identity */}
+                      <div className="bg-slate-850/80 rounded-xl p-2.5 border border-slate-800 flex items-start gap-2.5">
+                        <div className="p-1.5 rounded-lg bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 shrink-0 mt-0.5">
+                          <CheckCircle className="w-3.5 h-3.5" />
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center justify-between gap-1">
+                            <span className="text-[11px] font-bold text-slate-200">Payee Authenticity</span>
+                            {recipient.toLowerCase().includes("support") || recipient.toLowerCase().includes("refund") || recipient.toLowerCase().includes("lottery") ? (
+                              <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-rose-500/20 text-rose-300 border border-rose-500/30">Flagged Words</span>
+                            ) : isNewRecipient ? (
+                              <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30">1st Time Payee</span>
+                            ) : (
+                              <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">Verified VPA</span>
+                            )}
+                          </div>
+                          <p className="text-[10px] text-slate-400 truncate mt-0.5 font-mono">
+                            {recipient || "No recipient entered"}
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* Indicator 2: Device Hardware Trust */}
+                      <div className="bg-slate-850/80 rounded-xl p-2.5 border border-slate-800 flex items-start gap-2.5">
+                        <div className="p-1.5 rounded-lg bg-teal-500/10 text-teal-400 border border-teal-500/20 shrink-0 mt-0.5">
+                          <Smartphone className="w-3.5 h-3.5" />
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center justify-between gap-1">
+                            <span className="text-[11px] font-bold text-slate-200">Device Hardware Trust</span>
+                            {isNewDevice ? (
+                              <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30">New Hardware</span>
+                            ) : (
+                              <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">Enrolled Device</span>
+                            )}
+                          </div>
+                          <p className="text-[10px] text-slate-400 truncate mt-0.5">
+                            {isNewDevice ? "Hardware token mismatch" : "Cryptographic signature validated"}
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* Indicator 3: Spending Velocity & Timing */}
+                      <div className="bg-slate-850/80 rounded-xl p-2.5 border border-slate-800 flex items-start gap-2.5">
+                        <div className="p-1.5 rounded-lg bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 shrink-0 mt-0.5">
+                          <Clock className="w-3.5 h-3.5" />
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center justify-between gap-1">
+                            <span className="text-[11px] font-bold text-slate-200">Velocity & Timing</span>
+                            {amount >= 8000 ? (
+                              <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30">High Value (₹{amount.toLocaleString("en-IN")})</span>
+                            ) : (
+                              <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">Normal Velocity</span>
+                            )}
+                          </div>
+                          <p className="text-[10px] text-slate-400 truncate mt-0.5">
+                            Time: {timeStr} · Regular window
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* Indicator 4: Coercion & Screen Share Shield */}
+                      <div className="bg-slate-850/80 rounded-xl p-2.5 border border-slate-800 flex items-start gap-2.5">
+                        <div className="p-1.5 rounded-lg bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 shrink-0 mt-0.5">
+                          <Shield className="w-3.5 h-3.5" />
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center justify-between gap-1">
+                            <span className="text-[11px] font-bold text-slate-200">Coercion Shield</span>
+                            {activePhoneCall ? (
+                              <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-rose-500/20 text-rose-300 border border-rose-500/30">Active Call Vishing!</span>
+                            ) : (
+                              <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">Isolated Screen</span>
+                            )}
+                          </div>
+                          <p className="text-[10px] text-slate-400 truncate mt-0.5">
+                            {activePhoneCall ? "Coercion in progress detected" : "Zero remote mirroring or active calls"}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Detected Risk Factors Pill Tags */}
+                    {liveRiskAssessment.factors.length > 0 && (
+                      <div className="flex flex-wrap items-center gap-1.5 pt-2.5 mt-2.5 border-t border-slate-800">
+                        <span className="text-[10px] text-slate-400 font-bold mr-0.5">
+                          Active Safety Triggers:
+                        </span>
+                        {liveRiskAssessment.factors.map((factor, idx) => (
+                          <span 
+                            key={idx}
+                            className="px-2 py-0.5 rounded-md text-[10px] font-semibold bg-rose-500/15 border border-rose-500/25 text-rose-200"
+                          >
+                            {factor}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
 
                 <button
                   type="button"
                   id="btn-check-this-payment"
                   onClick={handleStartCheck}
-                  className="w-full py-4 px-6 rounded-2xl bg-gradient-to-r from-rose-700 via-rose-800 to-rose-900 hover:from-rose-800 hover:to-rose-950 active:scale-[0.99] text-white font-extrabold text-base shadow-lg shadow-rose-900/20 flex items-center justify-center gap-2 transition-all cursor-pointer"
+                  className="w-full py-4 px-6 rounded-2xl bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-500 hover:from-emerald-500 hover:to-teal-400 active:scale-[0.99] text-white font-extrabold text-base shadow-xl shadow-emerald-950/60 ring-1 ring-emerald-400/30 flex items-center justify-center gap-2 transition-all cursor-pointer"
                 >
                   {activeTabMode === "pay" ? (
                     <>
@@ -1420,14 +1826,14 @@ export const SafeUpiApp: React.FC<SafeUpiAppProps> = ({
               </div>
 
               {/* Trust text at the bottom, small and grey */}
-              <div className="pt-3 border-t border-rose-100 flex flex-col sm:flex-row items-center justify-center gap-3 text-xs text-slate-500 text-center">
+              <div className="pt-3 border-t border-slate-800 flex flex-col sm:flex-row items-center justify-center gap-3 text-xs text-slate-400 text-center">
                 <span className="flex items-center gap-1.5">
-                  <Lock className="w-3.5 h-3.5 text-rose-600" />
+                  <Lock className="w-3.5 h-3.5 text-emerald-400" />
                   {t.quietlyChecks}
                 </span>
-                <span className="hidden sm:inline text-rose-300">·</span>
+                <span className="hidden sm:inline text-slate-600">·</span>
                 <span className="flex items-center gap-1.5">
-                  <Zap className="w-3.5 h-3.5 text-amber-600" />
+                  <Zap className="w-3.5 h-3.5 text-amber-400" />
                   {t.checksFast}
                 </span>
               </div>
@@ -1436,20 +1842,20 @@ export const SafeUpiApp: React.FC<SafeUpiAppProps> = ({
             {/* =========================================================================
                 SCREEN 6: RECENT CHECKS & TRANSMITTED PAYMENTS
                ========================================================================= */}
-            <div className="bg-white border border-rose-200/80 rounded-3xl p-5 shadow-sm space-y-3">
-              <div className="flex items-center justify-between border-b border-rose-100 pb-2.5">
+            <div className="bg-slate-900/90 border border-slate-800 rounded-3xl p-5 shadow-xl space-y-3 text-white">
+              <div className="flex items-center justify-between border-b border-slate-800 pb-2.5">
                 <div className="flex items-center gap-2">
-                  <Clock className="w-4 h-4 text-rose-600" />
-                  <h3 className="text-xs font-bold text-rose-950 uppercase tracking-wider">
+                  <Clock className="w-4 h-4 text-emerald-400" />
+                  <h3 className="text-xs font-bold text-slate-200 uppercase tracking-wider">
                     {t.recentChecksTitle}
                   </h3>
                 </div>
-                <span className="text-[11px] text-slate-400 font-medium">
+                <span className="text-[11px] text-slate-400 font-medium font-mono">
                   {recentChecks.length} {t.entriesCount}
                 </span>
               </div>
 
-              <div className="divide-y divide-rose-50 space-y-1">
+              <div className="divide-y divide-slate-800/60 space-y-1">
                 {recentChecks.map((item) => {
                   const isApproved = item.status === "approved";
                   const isBlocked = item.status === "blocked";
@@ -1464,38 +1870,47 @@ export const SafeUpiApp: React.FC<SafeUpiAppProps> = ({
                         setTimeStr(item.time);
                         handleStartCheck();
                       }}
-                      className="pt-2.5 first:pt-0 flex items-center justify-between py-2 px-1.5 rounded-xl hover:bg-rose-50/50 transition-colors cursor-pointer group"
+                      className="pt-2.5 first:pt-0 flex items-center justify-between py-2 px-2.5 rounded-xl hover:bg-slate-800/60 transition-colors cursor-pointer group"
                     >
                       <div className="flex items-center gap-2.5">
                         <span className="text-base">
                           {isApproved ? "✅" : isBlocked ? "🚫" : "⚠️"}
                         </span>
                         <div>
-                          <div className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
-                            <span className="text-rose-950 font-extrabold">₹{item.amount.toLocaleString("en-IN")}</span>
-                            <span className="text-slate-400 font-normal">→</span>
-                            <span className="text-slate-700 font-medium">{item.recipient}</span>
+                          <div className="text-xs font-bold text-slate-100 flex items-center gap-1.5">
+                            <span className="text-white font-extrabold">₹{item.amount.toLocaleString("en-IN")}</span>
+                            <span className="text-slate-500 font-normal">→</span>
+                            <span className="text-slate-300 font-medium">{item.recipient}</span>
                           </div>
                           <div className="text-[10px] text-slate-400 font-mono flex items-center gap-2">
                             <span>{item.time}</span>
                             {item.utr && (
-                              <span className="text-emerald-700 font-semibold font-mono">UTR: {item.utr}</span>
+                              <span className="text-emerald-400 font-semibold font-mono">UTR: {item.utr}</span>
                             )}
                           </div>
                         </div>
                       </div>
 
-                      <div className="flex items-center gap-1.5">
-                        <span className={`text-[11px] font-semibold px-2.5 py-0.5 rounded-full ${
+                      <div className="flex items-center gap-2">
+                        <span className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded-md border ${
+                          isApproved 
+                            ? "bg-emerald-500/10 text-emerald-300 border-emerald-500/30" 
+                            : isBlocked 
+                            ? "bg-rose-500/10 text-rose-300 border-rose-500/30" 
+                            : "bg-amber-500/10 text-amber-300 border-amber-500/30"
+                        }`}>
+                          {isApproved ? "Risk: 12%" : isBlocked ? "Risk: 94%" : "Risk: 58%"}
+                        </span>
+                        <span className={`text-[11px] font-semibold px-2.5 py-0.5 rounded-full border ${
                           isApproved
-                            ? "bg-[#E8F5E9] text-[#2E7D32]"
+                            ? "bg-emerald-500/20 text-emerald-300 border-emerald-500/40"
                             : isBlocked
-                            ? "bg-[#FFEBEE] text-[#B71C1C]"
-                            : "bg-[#FFF8E1] text-[#B26A00]"
+                            ? "bg-rose-500/20 text-rose-300 border-rose-500/40"
+                            : "bg-amber-500/20 text-amber-300 border-amber-500/40"
                         }`}>
                           {item.label}
                         </span>
-                        <ChevronRight className="w-3.5 h-3.5 text-rose-300 group-hover:text-rose-600 transition-colors" />
+                        <ChevronRight className="w-3.5 h-3.5 text-slate-500 group-hover:text-emerald-400 transition-colors" />
                       </div>
                     </div>
                   );
@@ -2468,6 +2883,63 @@ export const SafeUpiApp: React.FC<SafeUpiAppProps> = ({
         amount={amount}
         recipient={recipient}
         guardianPhone={guardianPhone}
+      />
+
+      {/* User Profiles & Banking Details Switcher Modal (5 Accounts) */}
+      <UserProfileModal
+        isOpen={isProfileModalOpen}
+        onClose={() => setIsProfileModalOpen(false)}
+        activeProfile={activeProfile}
+        onSelectProfile={handleSelectProfile}
+      />
+
+      {/* User Login & Authentication Modal */}
+      <UserLoginModal
+        isOpen={isLoginModalOpen}
+        onClose={() => setIsLoginModalOpen(false)}
+        isLoggedIn={isLoggedIn}
+        activeProfile={activeProfile}
+        onLogin={(profile) => {
+          handleSelectProfile(profile);
+          setIsLoggedIn(true);
+          setIsLoginModalOpen(false);
+        }}
+        onLogout={() => {
+          setIsLoggedIn(false);
+          setIsLoginModalOpen(false);
+        }}
+      />
+
+      {/* Project Documentation & Flow Chart PDF Modal */}
+      <ProjectDocumentationModal
+        isOpen={isDocModalOpen}
+        onClose={() => setIsDocModalOpen(false)}
+      />
+
+      {/* Floating Multilingual AI Copilot Button */}
+      <div className="fixed bottom-5 right-5 z-40 flex items-center gap-2">
+        <button
+          type="button"
+          onClick={() => setIsAiChatOpen(true)}
+          className="group px-4 py-3 rounded-2xl bg-gradient-to-r from-teal-600 via-emerald-600 to-cyan-600 hover:from-teal-500 hover:to-cyan-500 text-white font-extrabold shadow-2xl shadow-emerald-950/80 ring-2 ring-emerald-400/50 flex items-center gap-2.5 cursor-pointer transition-all hover:scale-105"
+          title="Ask SafeUPI AI Copilot in any language"
+        >
+          <div className="relative">
+            <Bot className="w-5 h-5 text-white" />
+            <Sparkles className="w-2.5 h-2.5 text-amber-300 absolute -top-1 -right-1 animate-pulse" />
+          </div>
+          <div className="flex flex-col text-left leading-tight">
+            <span className="text-xs font-black">AI Multilingual Chat</span>
+            <span className="text-[9px] text-emerald-200 font-normal">Answers in your language</span>
+          </div>
+        </button>
+      </div>
+
+      {/* Multilingual AI Chat Modal */}
+      <SafeUpiAiChat
+        isOpen={isAiChatOpen}
+        onClose={() => setIsAiChatOpen(false)}
+        currentLang={currentLang}
       />
     </div>
   );

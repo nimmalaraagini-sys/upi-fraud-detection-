@@ -1,5 +1,5 @@
 import React from "react";
-import { X, Cpu, GitBranch, Layers, ShieldCheck, Database, Check, Sliders } from "lucide-react";
+import { X, Cpu, GitBranch, Layers, ShieldCheck, Check, Sliders } from "lucide-react";
 import { TRANSLATIONS } from "../utils/translations";
 
 interface TechnicalJuryModalProps {
@@ -78,7 +78,7 @@ export const TechnicalJuryModal: React.FC<TechnicalJuryModalProps> = ({
 
           <div className="grid grid-cols-3 gap-2 text-center font-mono">
             <div className="p-2.5 rounded-xl bg-slate-800/80 border border-slate-700">
-              <span className="text-[10px] text-slate-400 block">Random Forest (70%)</span>
+              <span className="text-[10px] text-slate-400 block">Edge ML Engine (70%)</span>
               <span className="text-lg font-extrabold text-cyan-400">{mlScore}%</span>
             </div>
             <div className="p-2.5 rounded-xl bg-slate-800/80 border border-slate-700">
@@ -92,7 +92,7 @@ export const TechnicalJuryModal: React.FC<TechnicalJuryModalProps> = ({
           </div>
 
           <p className="text-[11px] text-slate-300 leading-relaxed">
-            The hybrid architecture prevents false negatives by combining Random Forest probability estimation (trained on tabular behavioral features) with zero-tolerance deterministic rules (new hardware spikes, blacklisted VPAs, late-night high-value transfers).
+            The hybrid architecture prevents false negatives by combining Machine Learning probability estimation (trained on tabular behavioral features) with zero-tolerance deterministic rules (new hardware spikes, blacklisted VPAs, late-night high-value transfers).
           </p>
         </div>
 
@@ -130,7 +130,7 @@ export const TechnicalJuryModal: React.FC<TechnicalJuryModalProps> = ({
         <div className="grid grid-cols-2 gap-2.5 pt-3 text-xs">
           <div className="p-3 rounded-xl bg-slate-800/50 border border-slate-700/60 space-y-1">
             <span className="text-[10px] font-bold text-slate-400 uppercase block">Model Architecture</span>
-            <span className="font-mono text-white font-bold block">Random Forest Classifier</span>
+            <span className="font-mono text-white font-bold block">Secure Shield Edge Classifier</span>
             <span className="text-[11px] text-slate-400">100 estimators, max_depth=8, class_weight=&apos;balanced&apos;</span>
           </div>
 

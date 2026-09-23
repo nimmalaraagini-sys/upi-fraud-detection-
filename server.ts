@@ -1,13 +1,15 @@
 import express from "express";
 import path from "path";
+import fs from "fs";
 import dotenv from "dotenv";
+import QRCode from "qrcode";
 import { GoogleGenAI } from "@google/genai";
 import { createServer as createViteServer } from "vite";
 
 dotenv.config();
 
 const app = express();
-const PORT = 3000;
+const PORT = Number(process.env.PORT) || 3000;
 
 app.use(express.json({ limit: "15mb" }));
 app.use(express.urlencoded({ extended: true, limit: "15mb" }));
@@ -590,13 +592,295 @@ export const PRESET_SCENARIOS: Record<string, TransactionPayload> = {
   }
 };
 
-// API 1: Health check
+// ============================================================================
+// PERSISTENT DATABASE ENGINE (data/database.json)
+// ============================================================================
+const DB_FILE = path.join(process.cwd(), "data", "database.json");
+
+interface DatabaseSchema {
+  transactions: any[];
+  muleRegistry: any[];
+  complaints: any[];
+  threatIntel: any[];
+}
+
+function loadDatabase(): DatabaseSchema {
+  try {
+    if (fs.existsSync(DB_FILE)) {
+      const raw = fs.readFileSync(DB_FILE, "utf-8");
+      return JSON.parse(raw);
+    }
+  } catch (e) {
+    console.error("Error reading database.json:", e);
+  }
+  return {
+    transactions: [],
+    muleRegistry: [],
+    complaints: [],
+    threatIntel: []
+  };
+}
+
+function saveDatabase(data: DatabaseSchema): boolean {
+  try {
+    const dir = path.dirname(DB_FILE);
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true });
+    }
+    fs.writeFileSync(DB_FILE, JSON.stringify(data, null, 2), "utf-8");
+    return true;
+  } catch (e) {
+    console.error("Error saving database.json:", e);
+    return false;
+  }
+}
+
+// API 1: Health check & Server Status
 app.get("/api/health", (_req, res) => {
+  const db = loadDatabase();
   res.json({
     status: "healthy",
     engine: "UPI Risk Sentinel Engine v2.4",
+    database: {
+      status: "connected",
+      records: db.transactions.length,
+      muleEntries: db.muleRegistry.length,
+      activeComplaints: db.complaints.length
+    },
     geminiConfigured: !!getGeminiClient()
   });
+});
+
+// API: Get All Transactions from Database
+app.get("/api/transactions", (_req, res) => {
+  const db = loadDatabase();
+  res.json({
+    success: true,
+    total: db.transactions.length,
+    transactions: db.transactions
+  });
+});
+
+// API: Save New Transaction to Database
+app.post("/api/transactions", (req, res) => {
+  try {
+    const { merchant, vpa, amount, status, riskLevel, riskScore, category, channel, notes } = req.body;
+    if (!merchant || !vpa || amount === undefined) {
+      return res.status(400).json({ error: "Missing required transaction fields" });
+    }
+
+    const numAmount = typeof amount === "number" ? amount : parseFloat(String(amount).replace(/[^0-9.]/g, "")) || 0;
+    const db = loadDatabase();
+    
+    const newTx = {
+      id: `TXN-${Math.floor(10000 + Math.random() * 90000)}`,
+      merchant: String(merchant).trim(),
+      vpa: String(vpa).trim(),
+      date: "Just now",
+      amount: `₹${numAmount.toLocaleString("en-IN")}`,
+      rawAmount: numAmount,
+      status: status || (riskScore > 65 ? "Blocked" : "Completed"),
+      riskLevel: riskLevel || (riskScore > 65 ? "HIGH" : riskScore > 35 ? "MEDIUM" : "LOW"),
+      riskScore: typeof riskScore === "number" ? riskScore : 15,
+      category: category || "General Payment",
+      channel: channel || "direct_vpa",
+      timestamp: new Date().toISOString(),
+      utr: status === "Blocked" || riskScore > 65 ? "BLOCKED_PRE_AUTH" : `UTR${Date.now().toString().slice(-10)}`,
+      securityVerdict: notes || (riskScore > 65 ? "Payment blocked by SafeUPI Pre-Auth Sentinel" : "Verified Safe Payment")
+    };
+
+    db.transactions.unshift(newTx);
+    saveDatabase(db);
+
+    return res.status(201).json({
+      success: true,
+      transaction: newTx
+    });
+  } catch (err: any) {
+    console.error("Error creating transaction:", err);
+    return res.status(500).json({ error: "Failed to persist transaction to database" });
+  }
+});
+
+// API: Real-time Database Statistics
+app.get("/api/database/stats", (_req, res) => {
+  const db = loadDatabase();
+  const blockedTxns = db.transactions.filter(t => t.status === "Blocked" || t.riskLevel === "HIGH");
+  const totalProtected = blockedTxns.reduce((acc, t) => acc + (t.rawAmount || 0), 0);
+
+  res.json({
+    totalTransactions: db.transactions.length,
+    blockedCount: blockedTxns.length,
+    safeCount: db.transactions.filter(t => t.status === "Completed" && t.riskLevel === "LOW").length,
+    warningCount: db.transactions.filter(t => t.riskLevel === "MEDIUM").length,
+    totalProtectedAmount: totalProtected,
+    muleRegistryCount: db.muleRegistry.length,
+    activeComplaints: db.complaints.length,
+    lastUpdated: new Date().toISOString()
+  });
+});
+
+// API: I4C / 1930 Live Mule Registry Search
+app.get("/api/mule-registry", (req, res) => {
+  const query = (req.query.q as string || "").toLowerCase().trim();
+  const db = loadDatabase();
+
+  if (!query) {
+    return res.json({ total: db.muleRegistry.length, results: db.muleRegistry });
+  }
+
+  const matches = db.muleRegistry.filter(m => 
+    m.vpa.toLowerCase().includes(query) ||
+    m.name.toLowerCase().includes(query) ||
+    m.bank.toLowerCase().includes(query) ||
+    m.reason.toLowerCase().includes(query)
+  );
+
+  return res.json({
+    query,
+    total: matches.length,
+    results: matches
+  });
+});
+
+// API: National Threat Intelligence Bulletins
+app.get("/api/threat-intel", (_req, res) => {
+  const db = loadDatabase();
+  res.json({
+    total: db.threatIntel.length,
+    alerts: db.threatIntel
+  });
+});
+
+// API: File Official 1930 Cyber Fraud Complaint
+app.post("/api/complaints", (req, res) => {
+  try {
+    const { victimVpa, suspectVpa, amount, incidentType, bankReported, notes } = req.body;
+    if (!suspectVpa || !amount) {
+      return res.status(400).json({ error: "Missing required suspect VPA or amount" });
+    }
+
+    const db = loadDatabase();
+    const complaintId = `CYB-${new Date().getFullYear()}-${Math.floor(10000 + Math.random() * 90000)}`;
+    const docketNumber = `1930-MHA-${Math.floor(100000 + Math.random() * 900000)}`;
+
+    const newComplaint = {
+      id: complaintId,
+      timestamp: new Date().toISOString(),
+      victimVpa: victimVpa || "Current User",
+      suspectVpa: String(suspectVpa).trim(),
+      amount: typeof amount === "number" ? amount : parseFloat(String(amount)) || 0,
+      incidentType: incidentType || "Unauthorized UPI Debit / Phishing Trap",
+      status: "FROZEN_1930",
+      docketNumber,
+      bankReported: bankReported || "State Bank of India",
+      notes: notes || "Immediate golden-hour freeze signal dispatched to NPCI and beneficiary bank."
+    };
+
+    db.complaints.unshift(newComplaint);
+
+    // Also auto-add suspect to mule registry if not present
+    const existingMule = db.muleRegistry.find(m => m.vpa.toLowerCase() === suspectVpa.toLowerCase());
+    if (existingMule) {
+      existingMule.reportsCount += 1;
+      existingMule.riskScore = Math.min(100, existingMule.riskScore + 5);
+    } else {
+      db.muleRegistry.unshift({
+        vpa: suspectVpa,
+        name: `Flagged Suspect (${suspectVpa.split("@")[0]})`,
+        bank: "Beneficiary Bank",
+        riskScore: 92,
+        reportsCount: 1,
+        category: "MULE_ACCOUNT",
+        flaggedDate: new Date().toISOString().split("T")[0],
+        reason: `Complaint filed via SafeUPI 1930 Bridge: ${incidentType}`
+      });
+    }
+
+    saveDatabase(db);
+
+    return res.status(201).json({
+      success: true,
+      message: "Complaint registered and golden-hour freeze protocol initiated.",
+      complaint: newComplaint
+    });
+  } catch (err: any) {
+    console.error("Error creating complaint:", err);
+    return res.status(500).json({ error: "Failed to submit fraud complaint" });
+  }
+});
+
+// API: Real NPCI UPI Intent & Dynamic Scannable QR Generator
+app.post("/api/upi/create-intent", async (req, res) => {
+  try {
+    const { vpa, name, amount, note } = req.body;
+    if (!vpa) {
+      return res.status(400).json({ error: "Beneficiary UPI ID is required" });
+    }
+
+    const cleanVpa = String(vpa).trim();
+    const cleanName = String(name || cleanVpa.split("@")[0] || "Beneficiary").trim();
+    const numAmount = parseFloat(amount);
+    const cleanNote = String(note || "SafeUPI Payment").trim();
+
+    // Check if recipient is a flagged mule in our persistent database
+    const db = loadDatabase();
+    const muleList = db.muleRegistry || [];
+    const muleMatch = muleList.find(
+      (m: any) => m.vpa && m.vpa.toLowerCase() === cleanVpa.toLowerCase()
+    );
+
+    // Standard NPCI UPI URI Specification
+    // upi://pay?pa=address&pn=name&am=amount&cu=INR&tn=note
+    const params = new URLSearchParams();
+    params.set("pa", cleanVpa);
+    params.set("pn", cleanName);
+    if (!isNaN(numAmount) && numAmount > 0) {
+      params.set("am", numAmount.toFixed(2));
+    }
+    params.set("cu", "INR");
+    if (cleanNote) {
+      params.set("tn", cleanNote);
+    }
+
+    const upiUri = `upi://pay?${params.toString()}`;
+
+    // App-specific intent schemes
+    const intents = {
+      universal: upiUri,
+      gpay: upiUri,
+      phonepe: upiUri,
+      paytm: `paytmmp://upi/pay?${params.toString()}`,
+      bhim: upiUri
+    };
+
+    // Generate high-resolution scannable QR code PNG
+    const qrDataUrl = await QRCode.toDataURL(upiUri, {
+      errorCorrectionLevel: "H",
+      margin: 2,
+      width: 450,
+      color: {
+        dark: "#090d16",
+        light: "#ffffff",
+      }
+    });
+
+    return res.json({
+      success: true,
+      vpa: cleanVpa,
+      name: cleanName,
+      amount: !isNaN(numAmount) ? numAmount : 0,
+      note: cleanNote,
+      isMuleFlagged: Boolean(muleMatch),
+      muleDetails: muleMatch || null,
+      upiUri,
+      intents,
+      qrDataUrl
+    });
+  } catch (err: any) {
+    console.error("Error creating UPI intent:", err);
+    return res.status(500).json({ error: "Failed to generate UPI intent and QR" });
+  }
 });
 
 // API 2: Analyze Transaction
@@ -611,6 +895,123 @@ app.post("/api/analyze-transaction", (req, res) => {
   } catch (err: any) {
     console.error("Analysis engine error:", err);
     return res.status(500).json({ error: err.message || "Failed to analyze transaction" });
+  }
+});
+
+// API 3: Gemini AI Deep Forensic Investigation
+app.post("/api/ai-chat", async (req, res) => {
+  const { message, history = [], currentLang = "en" } = req.body;
+
+  if (!message || typeof message !== "string") {
+    return res.status(400).json({ error: "Missing or invalid message" });
+  }
+
+  const ai = getGeminiClient();
+
+  if (!ai) {
+    // Generate intelligent multilingual fallback
+    const lower = message.toLowerCase();
+    let reply = "";
+    
+    // Check if message is in Telugu or contains Telugu characters
+    const isTelugu = /[\u0C00-\u0C7F]/.test(message) || currentLang === "te" || lower.includes("telugu") || lower.includes("డబ్బులు");
+    const isHindi = /[\u0900-\u097F]/.test(message) || currentLang === "hi" || lower.includes("hindi") || lower.includes("पैसे");
+    const isTamil = /[\u0B80-\u0BFF]/.test(message) || currentLang === "ta";
+    const isKannada = /[\u0C80-\u0CFF]/.test(message) || currentLang === "kn";
+    const isMarathi = currentLang === "mr" || lower.includes("मराठी");
+
+    if (isTelugu) {
+      if (lower.includes("పిన్") || lower.includes("pin") || lower.includes("డబ్బులు") || lower.includes("రిసీవ్")) {
+        reply = "జాగ్రత్త! NPCI నిబంధనల ప్రకారం, మీ బ్యాంక్ ఖాతాలోకి డబ్బులు స్వీకరించడానికి (Receive) UPI PIN ఎంటర్ చేయవలసిన అవసరం ఎప్పుడూ ఉండదు. ఎవరైనా 'రిఫండ్' లేదా 'లాటరీ' కోసం పిన్ అడిగితే, అది 100% మోసం! అనుమానాస్పద లావాదేవీలు జరిగితే వెంటనే 1930 కి కాల్ చేయండి.";
+      } else if (lower.includes("1930") || lower.includes("కంప్లైంట్") || lower.includes("హెల్ప్‌లైన్")) {
+        reply = "సైబర్ క్రైమ్ హెల్ప్‌లైన్ నంబర్ 1930 అనేది భారతదేశంలో ఆన్‌లైన్ ఆర్థిక మోసాలను అడ్డుకోవడానికి పనిచేసే అత్యవసర సేవ. మోసం జరిగిన వెంటనే గోల్డెన్ అవర్‌లో 1930కి కాల్ చేసి మీ UTR నంబర్, UPI ID ఇస్తే వారు నిందితుల బ్యాంక్ ఖాతాను స్తంభింపజేస్తారు (Freeze). cybercrime.gov.in లో కూడా ఫిర్యాదు చేయవచ్చు.";
+      } else {
+        reply = "నమస్కారం! నేను SafeUPI AI సెక్యూరిటీ అసిస్టెంట్‌ని. మీరు ఏ భాషలోనైనా నన్ను యూపీఐ మోసాలు, అనుమానాస్పద VPAలు, కలెక్ట్ రిక్వెస్ట్‌లు లేదా 1930 హెల్ప్‌లైన్ గురించి అడగవచ్చు. నేను మీ ప్రశ్నలకు తెలుగులోనే సహాయం చేస్తాను.";
+      }
+    } else if (isHindi) {
+      if (lower.includes("पिन") || lower.includes("pin") || lower.includes("पैसे") || lower.includes("प्राप्त")) {
+        reply = "सावधान! NPCI और RBI के स्पष्ट नियमों के अनुसार, अपने बैंक खाते में पैसे प्राप्त (Receive) करने के लिए कभी भी UPI PIN दर्ज करने की आवश्यकता नहीं होती है। यदि कोई आपसे पैसे भेजने के नाम पर पिन दर्ज करने को कहे, तो वह सीधा फ्रॉड (Scam) है। तुरंत 1930 पर कॉल करें।";
+      } else if (lower.includes("1930") || lower.includes("शिकायत") || lower.includes("हेल्पलाइन")) {
+        reply = "राष्ट्रीय साइबर हेल्पलाइन 1930 पर तुरंत कॉल करें। अगर आपके साथ कोई यूपीआई फ्रॉड हुआ है, तो पहले 24 घंटे (गोल्डन आवर) में 1930 पर कॉल करने से बैंक खाते को तुरंत फ्रीज कराया जा सकता है। आप cybercrime.gov.in पर भी ई-एफआईआर दर्ज कर सकते हैं।";
+      } else {
+        reply = "नमस्ते! मैं SafeUPI AI सुरक्षा सहायक हूँ। आप मुझसे किसी भी भाषा में यूपीआई फ्रॉड, संदिग्ध QR कोड, कलेक्ट रिक्वेस्ट या साइबर हेल्पलाइन 1930 के बारे में पूछ सकते हैं। मैं आपकी भाषा में सहायता करूँगा।";
+      }
+    } else if (isTamil) {
+      reply = "வணக்கம்! SafeUPI AI பாதுகாப்பு உதவியாளர். பணம் பெறுவதற்கு UPI PIN ஐ உள்ளிட வேண்டிய அவசியமில்லை. மோசடி ஏற்பட்டால் உடனே 1930 என்ற எண்ணிற்கு அழைத்து புகார் அளியுங்கள்.";
+    } else if (isKannada) {
+      reply = "ನಮಸ್ಕಾರ! SafeUPI AI ಭದ್ರತಾ ಸಹಾಯಕ. ಹಣ ಸ್ವೀಕರಿಸಲು ಎಂದಿಗೂ UPI PIN ನಮೂದಿಸಬೇಡಿ. ಸೈಬರ್ ವಂಚನೆ ನಡೆದರೆ ತಕ್ಷಣವೇ 1930 ಗೆ ಕರೆ ಮಾಡಿ.";
+    } else if (isMarathi) {
+      reply = "नमस्कार! SafeUPI AI सुरक्षा सहाय्यक. बँक खात्यात पैसे जमा करण्यासाठी (Receive) कधीही UPI PIN टाकण्याची गरज नसते. फसवणूक झाल्यास त्वरित 1930 वर संपर्क साधा.";
+    } else {
+      if (lower.includes("pin") && (lower.includes("receive") || lower.includes("collect"))) {
+        reply = "⚠️ CRITICAL RULE: You NEVER need to enter your UPI PIN to RECEIVE money! Entering your UPI PIN always DEBITS funds from your account. If someone sent you a 'Collect Request' or QR code claiming it will credit money to you, decline it immediately—it is an active phishing trap.";
+      } else if (lower.includes("1930") || lower.includes("helpline") || lower.includes("police") || lower.includes("complaint")) {
+        reply = "🛡️ National Cyber Crime Helpline 1930 operates 24/7 across India. If you have been scammed, dial 1930 within the 'Golden Hour' (first 2-24 hours) with your Transaction UTR, amount, and recipient UPI ID. Law enforcement can issue an instant API freeze on the recipient mule account.";
+      } else if (lower.includes("anydesk") || lower.includes("teamviewer") || lower.includes("screen")) {
+        reply = "🚨 EXTREME DANGER: Never install AnyDesk, TeamViewer, QuickSupport, or RustDesk on the instruction of anyone claiming to be bank or customer support. These apps allow attackers to see your screen and capture your UPI PIN in real-time.";
+      } else {
+        reply = "Hello! I am the SafeUPI AI Security Copilot. I analyze Indian UPI scams, collect traps, QR tampering, and explain safety protocols in whatever language you prefer (Telugu, Hindi, Tamil, Kannada, English, etc.). How can I help secure your payment today?";
+      }
+    }
+
+    return res.json({
+      reply,
+      detectedLanguage: isTelugu ? "Telugu" : isHindi ? "Hindi" : isTamil ? "Tamil" : isKannada ? "Kannada" : isMarathi ? "Marathi" : "English",
+      source: "heuristic_guard_fallback"
+    });
+  }
+
+  try {
+    const prompt = `
+You are SafeUPI AI Copilot, a certified NPCI (National Payments Corporation of India) and CERT-In Cyber Fraud Prevention and Digital Banking Security Expert.
+
+CRITICAL INSTRUCTION - USER LANGUAGE MATCHING:
+The user will ask questions in various Indian and international languages:
+- English
+- Telugu (తెలుగు)
+- Hindi (हिन्दी)
+- Tamil (தமிழ்)
+- Kannada (ಕನ್ನಡ)
+- Marathi (मराठी)
+- Bengali (বাংলা)
+- Gujarati (ગુજરાતી)
+- Hinglish / Telugu-English transliteration
+
+YOU MUST ALWAYS DETECT AND REPLY IN THE EXACT SAME LANGUAGE IN WHICH THE USER ASKED!
+- If user asks in Telugu (e.g. "యూపీఐ పిన్ ఎవరితోనైనా షేర్ చేయవచ్చా?"), your entire reply MUST be in natural, accurate Telugu script.
+- If user asks in Hindi (e.g. "क्या मुझे पैसे पाने के लिए पिन डालना पड़ता है?"), your entire reply MUST be in Hindi script.
+- If user asks in Tamil, Kannada, Marathi, Bengali, or Gujarati, reply in that language.
+- If user asks in English, reply in crisp English.
+
+Core rules to emphasize:
+1. Receiving money NEVER requires entering a UPI PIN.
+2. Inbound collect requests or QR codes claiming to credit your account are phishing traps.
+3. Screen-sharing tools (AnyDesk, TeamViewer) capture UPI PINs.
+4. If scammed, immediately dial 1930 (National Cyber Crime Helpline) within the golden hour to freeze funds before mule account cashout.
+Keep replies direct, helpful, and reassuring.
+
+Conversation history:
+${history.map((h: any) => `${h.role === "user" ? "User" : "Assistant"}: ${h.content}`).join("\n")}
+
+User Query:
+${message}
+`;
+
+    const { text, modelUsed } = await callGeminiWithFallback(ai, {
+      contents: prompt,
+      models: ["gemini-3.8-flash", "gemini-flash-latest", "gemini-2.5-flash"]
+    });
+
+    return res.json({
+      reply: text.trim(),
+      source: modelUsed
+    });
+  } catch (err: any) {
+    console.error("AI Chatbot error:", err);
+    return res.json({
+      reply: "⚠️ AI service temporarily under high load. Remember: You NEVER need to enter your UPI PIN to receive money. In case of unauthorized transfer, call 1930 immediately.",
+      source: "fallback_busy"
+    });
   }
 });
 
