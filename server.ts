@@ -3,6 +3,7 @@ import path from "path";
 import fs from "fs";
 import dotenv from "dotenv";
 import QRCode from "qrcode";
+import { MongoClient, Db } from "mongodb";
 import { GoogleGenAI } from "@google/genai";
 import { createServer as createViteServer } from "vite";
 
@@ -593,7 +594,7 @@ export const PRESET_SCENARIOS: Record<string, TransactionPayload> = {
 };
 
 // ============================================================================
-// PERSISTENT DATABASE ENGINE (data/database.json)
+// PERSISTENT DATABASE & MONGODB HYBRID ENGINE
 // ============================================================================
 const DB_FILE = path.join(process.cwd(), "data", "database.json");
 
@@ -603,6 +604,76 @@ interface DatabaseSchema {
   complaints: any[];
   threatIntel: any[];
 }
+
+let activeMongoUri = process.env.MONGODB_URI || "mongodb://127.0.0.1:27017/safeupi";
+let mongoClient: MongoClient | null = null;
+let mongoDb: Db | null = null;
+let isMongoConnected = false;
+let mongoError: string | null = null;
+let lastMongoSync = new Date().toISOString();
+
+async function connectMongo(uriToTry?: string): Promise<{ success: boolean; message: string }> {
+  const targetUri = uriToTry || activeMongoUri;
+  try {
+    if (mongoClient) {
+      try { await mongoClient.close(); } catch (_) {}
+    }
+    const client = new MongoClient(targetUri, {
+      serverSelectionTimeoutMS: 2000,
+      connectTimeoutMS: 2000,
+    });
+    await client.connect();
+    const db = client.db("safeupi");
+    mongoClient = client;
+    mongoDb = db;
+    isMongoConnected = true;
+    mongoError = null;
+    activeMongoUri = targetUri;
+    lastMongoSync = new Date().toISOString();
+    console.log(`[SafeUPI MongoDB] Successfully connected to: ${targetUri.replace(/:\/\/.*@/, "://***@")}`);
+
+    // Seed local database to MongoDB
+    const local = loadDatabase();
+    await syncToMongo(local);
+    return { success: true, message: `Connected to MongoDB database (safeupi)` };
+  } catch (err: any) {
+    isMongoConnected = false;
+    mongoError = err?.message || "Could not connect to MongoDB server";
+    console.log(`[SafeUPI MongoDB] MongoDB not available locally (${mongoError}). Operating in High-Performance Local Database mode.`);
+    return { success: false, message: mongoError || "Connection failed" };
+  }
+}
+
+async function syncToMongo(data: DatabaseSchema) {
+  if (!isMongoConnected || !mongoDb) return;
+  try {
+    const txCol = mongoDb.collection("safeupi_transactions");
+    const muleCol = mongoDb.collection("safeupi_mule_registry");
+    const compCol = mongoDb.collection("safeupi_complaints");
+
+    if (data.transactions.length > 0) {
+      for (const tx of data.transactions) {
+        await txCol.updateOne({ id: tx.id }, { $set: tx }, { upsert: true });
+      }
+    }
+    if (data.muleRegistry.length > 0) {
+      for (const m of data.muleRegistry) {
+        await muleCol.updateOne({ vpa: m.vpa }, { $set: m }, { upsert: true });
+      }
+    }
+    if (data.complaints.length > 0) {
+      for (const c of data.complaints) {
+        await compCol.updateOne({ id: c.id }, { $set: c }, { upsert: true });
+      }
+    }
+    lastMongoSync = new Date().toISOString();
+  } catch (e: any) {
+    console.warn("[SafeUPI MongoDB Sync Warning]", e?.message);
+  }
+}
+
+// Background auto-connect on startup
+connectMongo().catch(() => {});
 
 function loadDatabase(): DatabaseSchema {
   try {
@@ -628,12 +699,66 @@ function saveDatabase(data: DatabaseSchema): boolean {
       fs.mkdirSync(dir, { recursive: true });
     }
     fs.writeFileSync(DB_FILE, JSON.stringify(data, null, 2), "utf-8");
+    // Asynchronously sync to MongoDB if connected
+    if (isMongoConnected && mongoDb) {
+      syncToMongo(data).catch(() => {});
+    }
     return true;
   } catch (e) {
     console.error("Error saving database.json:", e);
     return false;
   }
 }
+
+// API: Get MongoDB & Database Real-time Health
+app.get("/api/database/status", (_req, res) => {
+  const db = loadDatabase();
+  res.json({
+    success: true,
+    provider: isMongoConnected ? "MongoDB (Active Database)" : "Persistent Local DB (MongoDB Compatible)",
+    isMongoConnected,
+    mongoUri: activeMongoUri.replace(/:\/\/.*@/, "://***@"),
+    databaseName: "safeupi",
+    lastMongoSync,
+    mongoError,
+    records: {
+      transactions: db.transactions.length,
+      muleRegistry: db.muleRegistry.length,
+      complaints: db.complaints.length,
+      threatIntel: db.threatIntel.length,
+    },
+    connectionHelp: {
+      localCommand: "mongod --dbpath ./data/db",
+      dockerCommand: "docker run -d -p 27017:27017 --name safeupi-mongo mongo:latest",
+      atlasHelp: "Paste your mongodb+srv://... connection string into the Database Hub modal in SafeUPI."
+    }
+  });
+});
+
+// API: Connect or Reconnect to MongoDB
+app.post("/api/database/connect", async (req, res) => {
+  const { mongoUri } = req.body;
+  if (!mongoUri || typeof mongoUri !== "string") {
+    return res.status(400).json({ success: false, error: "Please provide a valid mongoUri connection string" });
+  }
+  const result = await connectMongo(mongoUri.trim());
+  res.json({
+    success: result.success,
+    message: result.message,
+    isMongoConnected,
+    mongoUri: activeMongoUri.replace(/:\/\/.*@/, "://***@"),
+  });
+});
+
+// API: Trigger Manual Database Sync
+app.post("/api/database/sync", async (_req, res) => {
+  const db = loadDatabase();
+  if (isMongoConnected && mongoDb) {
+    await syncToMongo(db);
+    return res.json({ success: true, message: "Successfully synchronized database with MongoDB collections", lastSync: lastMongoSync });
+  }
+  return res.json({ success: true, message: "Local database verified (MongoDB not connected)", lastSync: lastMongoSync });
+});
 
 // API 1: Health check & Server Status
 app.get("/api/health", (_req, res) => {

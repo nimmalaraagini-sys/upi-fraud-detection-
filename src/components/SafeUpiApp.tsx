@@ -852,6 +852,7 @@ export const SafeUpiApp: React.FC<SafeUpiAppProps> = ({
                   const langToVoiceMap: Record<SupportedLang, string> = {
                     en: "en-IN",
                     te: "te-IN",
+                    "te-en": "en-IN",
                     hi: "hi-IN",
                     ta: "ta-IN",
                     kn: "kn-IN",

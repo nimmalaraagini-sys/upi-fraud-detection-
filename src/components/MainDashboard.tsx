@@ -61,6 +61,7 @@ import { SupportedLang, MULTI_TRANSLATIONS } from "../utils/translations";
 import { regionalVoice, IndianLanguage } from "../utils/regionalVoice";
 import { PresentationDeck } from "./PresentationDeck";
 import { ProjectDocumentationModal } from "./ProjectDocumentationModal";
+import { MongoDatabaseHubModal } from "./MongoDatabaseHubModal";
 
 interface MainDashboardProps {
   user: {
@@ -82,6 +83,7 @@ export const MainDashboard: React.FC<MainDashboardProps> = ({ user, onLogout }) 
   const [isAiChatOpen, setIsAiChatOpen] = useState(false);
   const [isDeckOpen, setIsDeckOpen] = useState(false);
   const [isDocModalOpen, setIsDocModalOpen] = useState(false);
+  const [isMongoHubOpen, setIsMongoHubOpen] = useState(false);
 
   // Profile modal states
   const [activeProfileTab, setActiveProfileTab] = useState<"profile" | "security" | "settings" | null>(null);
@@ -113,6 +115,7 @@ export const MainDashboard: React.FC<MainDashboardProps> = ({ user, onLogout }) 
     const langToVoiceMap: Record<SupportedLang, IndianLanguage> = {
       en: "en-IN",
       te: "te-IN",
+      "te-en": "en-IN",
       hi: "hi-IN",
       ta: "ta-IN",
       kn: "kn-IN",
@@ -859,32 +862,46 @@ export const MainDashboard: React.FC<MainDashboardProps> = ({ user, onLogout }) 
           {/* Right Actions: Language Selector, DB Status, AI Assistant, Theme Switcher, Quick Logout & Notifications */}
           <div className="flex items-center gap-2">
 
-            {/* Multi-Language Selector Dropdown */}
-            <div className="flex items-center gap-1.5 bg-slate-850 hover:bg-slate-800 px-2.5 py-1.5 rounded-xl border border-cyan-500/40 transition-all shadow-xs" title="Change Language / భాషను ఎంచుకోండి / भाषा बदलें">
+            {/* Multi-Language Selector Dropdown (Language Check Before Pay) */}
+            <div className="flex items-center gap-1.5 bg-slate-850 hover:bg-slate-800 px-2.5 py-1.5 rounded-xl border border-cyan-500/40 transition-all shadow-xs" title="Language Check Before Pay / భాషను ఎంచుకోండి / Language Marandi">
               <Globe className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
+              <span className="text-[11px] font-bold text-cyan-300 hidden md:inline whitespace-nowrap">Language Check:</span>
               <select
                 id="header-language-select"
                 value={currentLang}
                 onChange={(e) => handleLanguageChange(e.target.value as SupportedLang)}
-                className="bg-transparent text-xs font-bold text-cyan-300 focus:outline-none cursor-pointer pr-1"
-                aria-label="Select Language"
+                className="bg-transparent text-xs font-bold text-cyan-200 focus:outline-none cursor-pointer pr-1"
+                aria-label="Language Check Before Pay"
               >
-                <option value="en" className="bg-slate-900 text-white">English</option>
-                <option value="te" className="bg-slate-900 text-white">తెలుగు (Telugu)</option>
-                <option value="hi" className="bg-slate-900 text-white">हिन्दी (Hindi)</option>
-                <option value="ta" className="bg-slate-900 text-white">தமிழ் (Tamil)</option>
-                <option value="kn" className="bg-slate-900 text-white">ಕನ್ನಡ (Kannada)</option>
-                <option value="mr" className="bg-slate-900 text-white">मराठी (Marathi)</option>
+                <option value="en" className="bg-slate-900 text-white">English (Check Before Pay)</option>
+                <option value="te" className="bg-slate-900 text-white">తెలుగు (Check Before Pay)</option>
+                <option value="te-en" className="bg-slate-900 text-white">Telugu-English (Check Before Pay)</option>
+                <option value="hi" className="bg-slate-900 text-white">हिन्दी (Check Before Pay)</option>
+                <option value="ta" className="bg-slate-900 text-white">தமிழ் (Check Before Pay)</option>
+                <option value="kn" className="bg-slate-900 text-white">ಕನ್ನಡ (Check Before Pay)</option>
+                <option value="mr" className="bg-slate-900 text-white">मराठी (Check Before Pay)</option>
               </select>
             </div>
 
-            {/* Real-time Protection Status Badge (Replaces DB Connected) */}
+            {/* MongoDB Database Hub Modal Trigger */}
+            <button
+              type="button"
+              onClick={() => setIsMongoHubOpen(true)}
+              className="px-2.5 py-1.5 rounded-xl bg-emerald-950/60 hover:bg-emerald-900/80 border border-emerald-500/40 text-emerald-300 text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer shadow-xs"
+              title={currentLang === "te" ? "MongoDB & డేటాబేస్ హబ్ తెరవండి" : "MongoDB & Database Hub"}
+            >
+              <Database className="w-3.5 h-3.5 text-emerald-400" />
+              <span className="hidden sm:inline">MongoDB Hub</span>
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+            </button>
+
+            {/* Real-time Protection Status Badge / Shield Hub */}
             <div 
               className="hidden md:flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border border-emerald-500/40 bg-emerald-950/50 text-emerald-300 text-xs font-semibold"
-              title={currentLang === "te" ? "రియల్-టైమ్ సేఫ్టీ షీల్డ్ యాక్టివ్‌గా ఉంది" : "Real-Time Risk Shield Active"}
+              title={currentLang === "te" ? "రియల్-టైమ్ సేఫ్టీ షీల్డ్ యాక్టివ్‌గా ఉంది" : currentLang === "te-en" ? "Real-time Safety Shield Active Ga Vundi" : "Real-Time Risk Shield Active"}
             >
               <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
-              <span>{currentLang === "te" ? "షీల్డ్ యాక్టివ్" : "Shield Active"}</span>
+              <span>{currentLang === "te" ? "షీల్డ్ యాక్టివ్" : currentLang === "te-en" ? "Shield Active" : "Shield Active"}</span>
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
             </div>
             
@@ -1082,17 +1099,18 @@ export const MainDashboard: React.FC<MainDashboardProps> = ({ user, onLogout }) 
         </div>
 
         {/* Secondary Sub-navigation Bar for Fast Screen Switching */}
+        {/* Main Tab Navigation Bar */}
         <div className="bg-[#080d1a] border-t border-slate-800/80 px-4">
           <div className="max-w-6xl mx-auto flex items-center gap-1.5 overflow-x-auto py-2.5 scrollbar-none text-xs">
             {[
-              { id: "home", label: "Dashboard" },
-              { id: "pay", label: "Send Money" },
-              { id: "scan", label: "Scan & Pay" },
-              { id: "detection", label: "Fraud Detection Center" },
-              { id: "screenshot", label: "Screenshot Check" },
-              { id: "scams", label: "Scam Simulator" },
-              { id: "recovery", label: "Recovery Hub (1930)" },
-              { id: "history", label: "Transactions" },
+              { id: "home", label: currentLang === "te" ? "హోమ్ (డ్యాష్‌బోర్డ్)" : currentLang === "te-en" ? "Home (Dashboard)" : "Dashboard" },
+              { id: "pay", label: currentLang === "te" ? "డబ్బు పంపండి" : currentLang === "te-en" ? "Send Money" : "Send Money" },
+              { id: "scan", label: currentLang === "te" ? "QR స్కాన్ & పే" : currentLang === "te-en" ? "Scan & Pay" : "Scan & Pay" },
+              { id: "detection", label: currentLang === "te" ? "మోసాల గుర్తింపు కేంద్రం" : currentLang === "te-en" ? "Fraud Detection Center" : "Fraud Detection Center" },
+              { id: "screenshot", label: currentLang === "te" ? "స్క్రీన్‌షాట్ తనిఖీ" : currentLang === "te-en" ? "Screenshot Check" : "Screenshot Check" },
+              { id: "scams", label: currentLang === "te" ? "స్కామ్ సిమ్యులేటర్" : currentLang === "te-en" ? "Scam Simulator" : "Scam Simulator" },
+              { id: "recovery", label: currentLang === "te" ? "1930 రికవరీ హబ్" : currentLang === "te-en" ? "Recovery Hub (1930)" : "Recovery Hub (1930)" },
+              { id: "history", label: currentLang === "te" ? "లావాదేవీల చరిత్ర" : currentLang === "te-en" ? "Transaction History" : "Transactions" },
             ].map((tab) => (
               <button
                 key={tab.id}
@@ -1131,17 +1149,17 @@ export const MainDashboard: React.FC<MainDashboardProps> = ({ user, onLogout }) 
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
               <div>
                 <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
-                  Good morning, {user.name}
+                  {currentLang === "te" ? `శుభోదయం, ${user.name}` : `Good morning, ${user.name}`}
                 </h1>
                 <p className="text-sm text-slate-500 font-medium">
-                  Stay protected. Check before you pay.
+                  {currentLang === "te" ? "సురక్షితంగా ఉండండి. చెల్లించే ముందు తనిఖీ చేయండి." : currentLang === "te-en" ? "Safe ga undandi. Check before you pay." : "Stay protected. Check before you pay."}
                 </p>
               </div>
 
               <div className="flex items-center gap-2">
                 <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 text-xs font-semibold">
                   <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                  Protection Active
+                  {currentLang === "te" ? "రక్షణ యాక్టివ్" : currentLang === "te-en" ? "Protection Active" : "Protection Active"}
                 </span>
                 <span className="text-xs font-semibold text-slate-700 bg-slate-100 px-2.5 py-1 rounded-full border border-slate-200">
                   NPCI Verified Shield
@@ -1166,28 +1184,32 @@ export const MainDashboard: React.FC<MainDashboardProps> = ({ user, onLogout }) 
                   <div>
                     <div className="flex items-center gap-2.5">
                       <h2 className="text-xl sm:text-2xl font-black text-white tracking-tight">
-                        You&apos;re Protected
+                        {currentLang === "te" ? "మీరు రక్షించబడ్డారు" : currentLang === "te-en" ? "Meeru Protected Ga Unnaru" : "You're Protected"}
                       </h2>
                       <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 font-mono">
                         Active
                       </span>
                     </div>
                     <p className="text-sm text-slate-300 mt-1 max-w-lg leading-relaxed">
-                      SafeUPI is monitoring your payment risk signals in real-time. Every outgoing transfer is analyzed before PIN authorization.
+                      {currentLang === "te" 
+                        ? "SafeUPI మీ పేమెంట్ రిస్క్ సిగ్నల్స్‌ను నిరంతరం పర్యవేక్షిస్తుంది. UPI పిన్ ఎంటర్ చేసే ముందే ప్రతి లావాదేవీ తనిఖీ చేయబడుతుంది." 
+                        : currentLang === "te-en" 
+                        ? "SafeUPI mee payment risk signals ni monitor chestondi. UPI PIN enter chese mundhe transaction check chestundi." 
+                        : "SafeUPI is monitoring your payment risk signals in real-time. Every outgoing transfer is analyzed before PIN authorization."}
                     </p>
 
                     <div className="mt-4 flex flex-wrap items-center gap-4 text-xs text-slate-300">
                       <span className="flex items-center gap-1.5">
                         <Check className="w-4 h-4 text-emerald-400" />
-                        Zero-PII Cryptographic Privacy
+                        {currentLang === "te" ? "జీరో-PII ప్రైవసీ రక్షణ" : "Zero-PII Cryptographic Privacy"}
                       </span>
                       <span className="flex items-center gap-1.5">
                         <Check className="w-4 h-4 text-emerald-400" />
-                        Pre-Transaction Risk Gauge
+                        {currentLang === "te" ? "ప్రీ-ట్రాన్సాక్షన్ రిస్క్ గేజ్" : "Pre-Transaction Risk Gauge"}
                       </span>
                       <span className="flex items-center gap-1.5">
                         <Check className="w-4 h-4 text-emerald-400" />
-                        National Cyber 1930 Integration
+                        {currentLang === "te" ? "జాతీయ సైబర్ 1930 రికవరీ హబ్" : "National Cyber 1930 Integration"}
                       </span>
                     </div>
                   </div>
@@ -1204,7 +1226,7 @@ export const MainDashboard: React.FC<MainDashboardProps> = ({ user, onLogout }) 
                     }}
                     className="px-4 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs sm:text-sm shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer"
                   >
-                    <span>Send Protected Payment</span>
+                    <span>{currentLang === "te" ? "సురక్షిత చెల్లింపు చేయండి" : currentLang === "te-en" ? "Protected Payment Cheyyandi" : "Send Protected Payment"}</span>
                     <ArrowRight className="w-4 h-4" />
                   </button>
 
@@ -1341,8 +1363,8 @@ export const MainDashboard: React.FC<MainDashboardProps> = ({ user, onLogout }) 
                     <ArrowUpRight className="w-4 h-4 text-slate-400 group-hover:text-blue-600 transition-colors" />
                   </div>
                   <div className="mt-4">
-                    <h4 className="font-bold text-slate-900 text-base">Pay</h4>
-                    <p className="text-xs text-slate-500 mt-0.5">Make a Payment</p>
+                    <h4 className="font-bold text-slate-900 text-base">{currentLang === "te" ? "చెల్లించండి" : currentLang === "te-en" ? "Pay" : "Pay"}</h4>
+                    <p className="text-xs text-slate-500 mt-0.5">{currentLang === "te" ? "సురక్షిత చెల్లింపు" : currentLang === "te-en" ? "Payment Cheyyandi" : "Make a Payment"}</p>
                   </div>
                 </div>
 
@@ -1358,8 +1380,8 @@ export const MainDashboard: React.FC<MainDashboardProps> = ({ user, onLogout }) 
                     <ArrowUpRight className="w-4 h-4 text-slate-400 group-hover:text-sky-600 transition-colors" />
                   </div>
                   <div className="mt-4">
-                    <h4 className="font-bold text-slate-900 text-base">Scan & Pay</h4>
-                    <p className="text-xs text-slate-500 mt-0.5">Scan QR Code</p>
+                    <h4 className="font-bold text-slate-900 text-base">{currentLang === "te" ? "స్కాన్ & పే" : currentLang === "te-en" ? "Scan & Pay" : "Scan & Pay"}</h4>
+                    <p className="text-xs text-slate-500 mt-0.5">{currentLang === "te" ? "QR కోడ్ స్కాన్ చేయండి" : currentLang === "te-en" ? "QR Code Scan Cheyyandi" : "Scan QR Code"}</p>
                   </div>
                 </div>
 
@@ -1375,8 +1397,8 @@ export const MainDashboard: React.FC<MainDashboardProps> = ({ user, onLogout }) 
                     <ArrowUpRight className="w-4 h-4 text-slate-400 group-hover:text-emerald-600 transition-colors" />
                   </div>
                   <div className="mt-4">
-                    <h4 className="font-bold text-slate-900 text-base">Check Risk</h4>
-                    <p className="text-xs text-slate-500 mt-0.5">Check Transaction</p>
+                    <h4 className="font-bold text-slate-900 text-base">{currentLang === "te" ? "రిస్క్ చెక్" : currentLang === "te-en" ? "Check Risk" : "Check Risk"}</h4>
+                    <p className="text-xs text-slate-500 mt-0.5">{currentLang === "te" ? "లావాదేవీ తనిఖీ" : currentLang === "te-en" ? "Transaction Check Cheyyandi" : "Check Transaction"}</p>
                   </div>
                 </div>
 
@@ -1392,8 +1414,8 @@ export const MainDashboard: React.FC<MainDashboardProps> = ({ user, onLogout }) 
                     <ArrowUpRight className="w-4 h-4 text-slate-400 group-hover:text-rose-600 transition-colors" />
                   </div>
                   <div className="mt-4">
-                    <h4 className="font-bold text-slate-900 text-base">Report Fraud</h4>
-                    <p className="text-xs text-slate-500 mt-0.5">Helpline 1930 & Recovery</p>
+                    <h4 className="font-bold text-slate-900 text-base">{currentLang === "te" ? "మోసం రిపోర్ట్" : currentLang === "te-en" ? "Report Fraud" : "Report Fraud"}</h4>
+                    <p className="text-xs text-slate-500 mt-0.5">{currentLang === "te" ? "1930 హెల్ప్‌లైన్ & రికవరీ" : currentLang === "te-en" ? "1930 Helpline & Recovery" : "Helpline 1930 & Recovery"}</p>
                   </div>
                 </div>
 
@@ -1595,10 +1617,21 @@ export const MainDashboard: React.FC<MainDashboardProps> = ({ user, onLogout }) 
                     />
                   </div>
 
-                  {/* Security Notice */}
-                  <div className="p-3 bg-blue-50/60 border border-blue-100 rounded-xl flex items-center gap-2 text-xs text-blue-800">
-                    <ShieldCheck className="w-4 h-4 text-blue-600 shrink-0" />
-                    <span>SafeUPI will intercept and evaluate risk factors before asking for your UPI PIN.</span>
+                  {/* Security Notice & Language Check Before Pay */}
+                  <div className="p-3.5 bg-blue-50/80 border border-blue-200 rounded-xl space-y-2">
+                    <div className="flex items-center justify-between gap-2 flex-wrap text-xs text-blue-900 font-semibold">
+                      <div className="flex items-center gap-2">
+                        <ShieldCheck className="w-4 h-4 text-blue-600 shrink-0" />
+                        <span>SafeUPI Risk Interceptor: Active</span>
+                      </div>
+                      <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-cyan-100 text-cyan-800 border border-cyan-300 text-[10px] font-bold">
+                        <Globe className="w-3 h-3 text-cyan-600" />
+                        Language Check Before Pay: {currentLang === "te" ? "తెలుగు" : currentLang === "te-en" ? "Telugu-English" : currentLang === "hi" ? "हिन्दी" : currentLang === "ta" ? "தமிழ்" : currentLang === "kn" ? "ಕನ್ನಡ" : currentLang === "mr" ? "मराठी" : "English"}
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-blue-700">
+                      Evaluates recipient VPA, velocity, reverse collect traps, and reads aloud safety advisory in your chosen language before asking for your UPI PIN.
+                    </p>
                   </div>
 
                   <button
@@ -3313,6 +3346,15 @@ export const MainDashboard: React.FC<MainDashboardProps> = ({ user, onLogout }) 
         <ProjectDocumentationModal
           isOpen={isDocModalOpen}
           onClose={() => setIsDocModalOpen(false)}
+        />
+      )}
+
+      {/* MongoDB Database Hub Modal */}
+      {isMongoHubOpen && (
+        <MongoDatabaseHubModal
+          isOpen={isMongoHubOpen}
+          onClose={() => setIsMongoHubOpen(false)}
+          currentLang={currentLang}
         />
       )}
 
