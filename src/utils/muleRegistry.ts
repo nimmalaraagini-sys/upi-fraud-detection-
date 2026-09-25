@@ -140,6 +140,15 @@ class MuleRegistryService {
     return hit || null;
   }
 
+  public isMuleVpa(vpa: string): boolean {
+    if (!vpa) return false;
+    const clean = vpa.trim().toLowerCase();
+    const list = this.getAll();
+    return list.some(item => 
+      item.vpaHash.toLowerCase() === clean || clean.includes(item.vpaHash.toLowerCase())
+    );
+  }
+
   public async reportVpa(
     vpa: string, 
     category: MuleReportEntry["threatCategory"] = "LOTTERY_SCAM"

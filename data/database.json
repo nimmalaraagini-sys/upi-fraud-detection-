@@ -185,5 +185,60 @@
       "issuedBy": "Cyber Cell Delhi Police",
       "date": "2026-09-18"
     }
+  ],
+  "verifications": [
+    {
+      "id": "VRF-2026-594280",
+      "type": "BANK_ACCOUNT_CALL",
+      "step": 3,
+      "method": "BANK_ACCOUNT_CALL",
+      "userName": "Rahul Sharma",
+      "aadhaarMasked": "XXXX-XXXX-4819",
+      "mobileNumber": "+91 9876543210",
+      "linkedMobileMasked": "+91 ••••• •3210",
+      "otpCode": "620194",
+      "status": "VERIFIED",
+      "timestamp": "2026-09-25T08:09:30.151Z",
+      "provider": "RBI Bank Account Core IVR Telephony Gateway",
+      "notes": "Step 3: Missed SMS OTP — Automated bank call dispatched from +91 22 6160 6161 to 9876543210",
+      "bankName": "HDFC Bank",
+      "bankHelpline": "+91 22 6160 6161",
+      "bankAccountMasked": "HDFC Bank •••• 4021",
+      "voiceOtp": "391480",
+      "spokenMessage": "Hello Rahul Sharma, this is an official automated security verification call from HDFC Bank for Account HDFC Bank •••• 4021. Your SafeUPI verification code is 3 9 1 4 8 0. Press 1 to approve and complete your authorization.",
+      "verifiedAt": "2026-09-25T08:09:36.862Z",
+      "authMethodUsed": "BANK_IVR_PRESS_1"
+    },
+    {
+      "id": "VRF-2026-001",
+      "type": "AADHAAR_OTP",
+      "step": 1,
+      "method": "AADHAAR_LINKED_MOBILE",
+      "userName": "Rahul Sharma",
+      "aadhaarMasked": "XXXX-XXXX-4819",
+      "mobileNumber": "+91 98765 43210",
+      "linkedMobileMasked": "+91 ••••• •4819",
+      "otpCode": "849201",
+      "status": "VERIFIED",
+      "verifiedAt": "2026-09-24T18:30:00.000Z",
+      "provider": "UIDAI Aadhaar OTP Gateway",
+      "notes": "Step 1: UIDAI Aadhaar linked mobile verified."
+    },
+    {
+      "id": "VRF-2026-002",
+      "type": "BANK_ACCOUNT_CALL",
+      "step": 3,
+      "method": "BANK_ACCOUNT_CALL",
+      "userName": "Ananya Patel",
+      "mobileNumber": "+91 99887 76655",
+      "bankName": "HDFC Bank",
+      "bankAccountMasked": "HDFC Bank •••• 4021",
+      "bankHelpline": "+91 22 6160 6161",
+      "voiceOtp": "391480",
+      "status": "VERIFIED",
+      "verifiedAt": "2026-09-24T20:15:00.000Z",
+      "provider": "Bank Account Core IVR Switch",
+      "notes": "Step 3: Missed SMS OTP fallback to official bank account automated security call."
+    }
   ]
 }

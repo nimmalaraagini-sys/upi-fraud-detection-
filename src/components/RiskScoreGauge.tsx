@@ -66,13 +66,36 @@ export const RiskScoreGauge: React.FC<RiskScoreGaugeProps> = ({ analysis, onInve
   const arcLength = Math.PI * radius; // ~235.6
   const strokeDashoffset = arcLength - (riskScore / 100) * arcLength;
 
+  // Smooth numerical count animation
+  const [animatedScore, setAnimatedScore] = React.useState(riskScore);
+  React.useEffect(() => {
+    let start = animatedScore;
+    const end = riskScore;
+    if (start === end) return;
+    const duration = 600;
+    const startTime = performance.now();
+
+    let animId: number;
+    const animate = (now: number) => {
+      const elapsed = now - startTime;
+      const progress = Math.min(elapsed / duration, 1);
+      const ease = 1 - Math.pow(1 - progress, 3);
+      setAnimatedScore(Math.round(start + (end - start) * ease));
+      if (progress < 1) {
+        animId = requestAnimationFrame(animate);
+      }
+    };
+    animId = requestAnimationFrame(animate);
+    return () => cancelAnimationFrame(animId);
+  }, [riskScore]);
+
   return (
     <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-xs relative overflow-hidden flex flex-col justify-between">
       <div>
         {/* Header bar with risk tag */}
         <div className="flex items-center justify-between gap-2 border-b border-slate-100 pb-3 mb-4">
           <div className="flex items-center gap-2">
-            <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold border ${config.badgeBg}`}>
+            <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold border transition-all duration-500 ${config.badgeBg}`}>
               <Icon className={`w-4 h-4 ${config.iconColor}`} />
               {config.label}
             </span>
@@ -103,14 +126,16 @@ export const RiskScoreGauge: React.FC<RiskScoreGaugeProps> = ({ analysis, onInve
               strokeLinecap="round"
               strokeDasharray={arcLength}
               strokeDashoffset={strokeDashoffset}
-              className="transition-all duration-700 ease-out"
+              style={{
+                transition: "stroke-dashoffset 0.8s cubic-bezier(0.34, 1.56, 0.64, 1), stroke 0.6s ease"
+              }}
             />
           </svg>
 
           {/* Centered Score text */}
           <div className="absolute top-10 flex flex-col items-center justify-center text-center">
             <span className="text-4xl font-extrabold font-mono tracking-tight text-slate-900 flex items-baseline">
-              {riskScore}
+              {animatedScore}
               <span className="text-sm font-normal text-slate-400 ml-1">/100</span>
             </span>
             <span className="text-xs font-semibold text-slate-600 mt-0.5">

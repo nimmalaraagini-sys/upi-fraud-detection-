@@ -124,73 +124,73 @@ export const ProjectDocumentationModal: React.FC<ProjectDocumentationModalProps>
                 </defs>
 
                 {/* Step 1 */}
-                <rect x="20" y="30" width="160" height="60" rx="8" fill="#1e293b" stroke="#334155" stroke-width="1.5" />
-                <text x="100" y="55" fill="#f8fafc" font-size="12" font-weight="bold" text-anchor="middle">1. User Initiates</text>
-                <text x="100" y="73" fill="#94a3b8" font-size="10" text-anchor="middle">QR Scan or VPA Intent</text>
+                <rect x="20" y="30" width="160" height="60" rx="8" fill="#1e293b" stroke="#334155" strokeWidth="1.5" />
+                <text x="100" y="55" fill="#f8fafc" fontSize="12" fontWeight="bold" textAnchor="middle">1. User Initiates</text>
+                <text x="100" y="73" fill="#94a3b8" fontSize="10" textAnchor="middle">QR Scan or VPA Intent</text>
 
-                <line x1="180" y1="60" x2="230" y2="60" stroke="#34d399" stroke-width="2" marker-end="url(#flow-arrow)" />
+                <line x1="180" y1="60" x2="230" y2="60" stroke="#34d399" strokeWidth="2" markerEnd="url(#flow-arrow)" />
 
                 {/* Step 2 */}
-                <rect x="235" y="30" width="180" height="60" rx="8" fill="#0f766e" stroke="#14b8a6" stroke-width="1.5" />
-                <text x="325" y="55" fill="#ffffff" font-size="12" font-weight="bold" text-anchor="middle">2. Edge Interceptor</text>
-                <text x="325" y="73" fill="#ccfbf1" font-size="10" text-anchor="middle">Pre-Transmit Hook (Zero-PII)</text>
+                <rect x="235" y="30" width="180" height="60" rx="8" fill="#0f766e" stroke="#14b8a6" strokeWidth="1.5" />
+                <text x="325" y="55" fill="#ffffff" fontSize="12" fontWeight="bold" textAnchor="middle">2. Edge Interceptor</text>
+                <text x="325" y="73" fill="#ccfbf1" fontSize="10" textAnchor="middle">Pre-Transmit Hook (Zero-PII)</text>
 
-                <line x1="415" y1="60" x2="475" y2="60" stroke="#34d399" stroke-width="2" marker-end="url(#flow-arrow)" />
+                <line x1="415" y1="60" x2="475" y2="60" stroke="#34d399" strokeWidth="2" markerEnd="url(#flow-arrow)" />
 
                 {/* Step 3: Multi-Vector Assessment */}
-                <rect x="480" y="15" width="290" height="90" rx="10" fill="#1e293b" stroke="#059669" stroke-width="2" />
-                <text x="625" y="38" fill="#34d399" font-size="12" font-weight="bold" text-anchor="middle">3. Multi-Vector Edge Engine</text>
+                <rect x="480" y="15" width="290" height="90" rx="10" fill="#1e293b" stroke="#059669" strokeWidth="2" />
+                <text x="625" y="38" fill="#34d399" fontSize="12" fontWeight="bold" textAnchor="middle">3. Multi-Vector Edge Engine</text>
                 
                 <rect x="495" y="48" width="80" height="42" rx="4" fill="#0f172a" />
-                <text x="535" y="66" fill="#f8fafc" font-size="9" font-weight="bold" text-anchor="middle">Vishing Call</text>
-                <text x="535" y="78" fill="#94a3b8" font-size="8" text-anchor="middle">Active Sensor</text>
+                <text x="535" y="66" fill="#f8fafc" fontSize="9" fontWeight="bold" textAnchor="middle">Vishing Call</text>
+                <text x="535" y="78" fill="#94a3b8" fontSize="8" textAnchor="middle">Active Sensor</text>
 
                 <rect x="585" y="48" width="80" height="42" rx="4" fill="#0f172a" />
-                <text x="625" y="66" fill="#f8fafc" font-size="9" font-weight="bold" text-anchor="middle">ML Classifier</text>
-                <text x="625" y="78" fill="#94a3b8" font-size="8" text-anchor="middle">Amount / Time</text>
+                <text x="625" y="66" fill="#f8fafc" fontSize="9" fontWeight="bold" textAnchor="middle">ML Classifier</text>
+                <text x="625" y="78" fill="#94a3b8" fontSize="8" textAnchor="middle">Amount / Time</text>
 
                 <rect x="675" y="48" width="85" height="42" rx="4" fill="#0f172a" />
-                <text x="717" y="66" fill="#f8fafc" font-size="9" font-weight="bold" text-anchor="middle">Mule Registry</text>
-                <text x="717" y="78" fill="#94a3b8" font-size="8" text-anchor="middle">1930 NCRP Sync</text>
+                <text x="717" y="66" fill="#f8fafc" fontSize="9" fontWeight="bold" textAnchor="middle">Mule Registry</text>
+                <text x="717" y="78" fill="#94a3b8" fontSize="8" textAnchor="middle">1930 NCRP Sync</text>
 
                 {/* Arrow down to Decision Diamond */}
-                <line x1="625" y1="105" x2="625" y2="155" stroke="#34d399" stroke-width="2" marker-end="url(#flow-arrow)" />
+                <line x1="625" y1="105" x2="625" y2="155" stroke="#34d399" strokeWidth="2" markerEnd="url(#flow-arrow)" />
 
                 {/* Decision Diamond */}
-                <polygon points="625,160 720,205 625,250 530,205" fill="#334155" stroke="#94a3b8" stroke-width="1.5" />
-                <text x="625" y="200" fill="#ffffff" font-size="11" font-weight="bold" text-anchor="middle">Risk Score</text>
-                <text x="625" y="215" fill="#cbd5e1" font-size="10" text-anchor="middle">Assessment</text>
+                <polygon points="625,160 720,205 625,250 530,205" fill="#334155" stroke="#94a3b8" strokeWidth="1.5" />
+                <text x="625" y="200" fill="#ffffff" fontSize="11" fontWeight="bold" textAnchor="middle">Risk Score</text>
+                <text x="625" y="215" fill="#cbd5e1" fontSize="10" textAnchor="middle">Assessment</text>
 
                 {/* Branch 1: Low Risk (<30) */}
-                <line x1="530" y1="205" x2="160" y2="205" stroke="#34d399" stroke-width="2" />
-                <line x1="160" y1="205" x2="160" y2="280" stroke="#34d399" stroke-width="2" marker-end="url(#flow-arrow)" />
-                <rect x="80" y="280" width="160" height="70" rx="8" fill="#064e3b" stroke="#059669" stroke-width="1.5" />
-                <text x="160" y="305" fill="#6ee7b7" font-size="11" font-weight="bold" text-anchor="middle">LOW RISK (&lt;30)</text>
-                <text x="160" y="323" fill="#a7f3d0" font-size="9" text-anchor="middle">Direct PIN Entry</text>
-                <text x="160" y="337" fill="#a7f3d0" font-size="9" text-anchor="middle">&amp; Instant Transmission</text>
+                <line x1="530" y1="205" x2="160" y2="205" stroke="#34d399" strokeWidth="2" />
+                <line x1="160" y1="205" x2="160" y2="280" stroke="#34d399" strokeWidth="2" markerEnd="url(#flow-arrow)" />
+                <rect x="80" y="280" width="160" height="70" rx="8" fill="#064e3b" stroke="#059669" strokeWidth="1.5" />
+                <text x="160" y="305" fill="#6ee7b7" fontSize="11" fontWeight="bold" textAnchor="middle">LOW RISK (&lt;30)</text>
+                <text x="160" y="323" fill="#a7f3d0" fontSize="9" textAnchor="middle">Direct PIN Entry</text>
+                <text x="160" y="337" fill="#a7f3d0" fontSize="9" textAnchor="middle">&amp; Instant Transmission</text>
 
                 {/* Branch 2: Medium Risk (30-70) */}
-                <line x1="625" y1="250" x2="625" y2="280" stroke="#fbbf24" stroke-width="2" marker-end="url(#flow-arrow-amber)" />
-                <rect x="540" y="280" width="170" height="70" rx="8" fill="#78350f" stroke="#d97706" stroke-width="1.5" />
-                <text x="625" y="305" fill="#fde68a" font-size="11" font-weight="bold" text-anchor="middle">MEDIUM RISK (30-70)</text>
-                <text x="625" y="323" fill="#fef3c7" font-size="9" text-anchor="middle">Show Explainability Factors</text>
-                <text x="625" y="337" fill="#fef3c7" font-size="9" text-anchor="middle">&amp; Step-Up Warning</text>
+                <line x1="625" y1="250" x2="625" y2="280" stroke="#fbbf24" strokeWidth="2" markerEnd="url(#flow-arrow-amber)" />
+                <rect x="540" y="280" width="170" height="70" rx="8" fill="#78350f" stroke="#d97706" strokeWidth="1.5" />
+                <text x="625" y="305" fill="#fde68a" fontSize="11" fontWeight="bold" textAnchor="middle">MEDIUM RISK (30-70)</text>
+                <text x="625" y="323" fill="#fef3c7" fontSize="9" textAnchor="middle">Show Explainability Factors</text>
+                <text x="625" y="337" fill="#fef3c7" fontSize="9" textAnchor="middle">&amp; Step-Up Warning</text>
 
                 {/* Branch 3: High Risk / Mule (>70) */}
-                <line x1="720" y1="205" x2="750" y2="205" stroke="#f43f5e" stroke-width="2" />
-                <line x1="750" y1="205" x2="750" y2="390" stroke="#f43f5e" stroke-width="2" />
-                <line x1="750" y1="390" x2="630" y2="390" stroke="#f43f5e" stroke-width="2" marker-end="url(#flow-arrow-rose)" />
-                <rect x="420" y="365" width="200" height="75" rx="8" fill="#881337" stroke="#e11d48" stroke-width="1.5" />
-                <text x="520" y="390" fill="#fecdd3" font-size="11" font-weight="bold" text-anchor="middle">HIGH RISK (&gt;70 / MULE)</text>
-                <text x="520" y="408" fill="#ffe4e6" font-size="9" text-anchor="middle">Guardian Dual-Authorization</text>
-                <text x="520" y="422" fill="#ffe4e6" font-size="9" text-anchor="middle">Or Block &amp; 1930 Escalation</text>
+                <line x1="720" y1="205" x2="750" y2="205" stroke="#f43f5e" strokeWidth="2" />
+                <line x1="750" y1="205" x2="750" y2="390" stroke="#f43f5e" strokeWidth="2" />
+                <line x1="750" y1="390" x2="630" y2="390" stroke="#f43f5e" strokeWidth="2" markerEnd="url(#flow-arrow-rose)" />
+                <rect x="420" y="365" width="200" height="75" rx="8" fill="#881337" stroke="#e11d48" strokeWidth="1.5" />
+                <text x="520" y="390" fill="#fecdd3" fontSize="11" fontWeight="bold" textAnchor="middle">HIGH RISK (&gt;70 / MULE)</text>
+                <text x="520" y="408" fill="#ffe4e6" fontSize="9" textAnchor="middle">Guardian Dual-Authorization</text>
+                <text x="520" y="422" fill="#ffe4e6" fontSize="9" textAnchor="middle">Or Block &amp; 1930 Escalation</text>
 
                 {/* Final Destination: NPCI UPI Switch */}
-                <rect x="80" y="390" width="220" height="50" rx="8" fill="#0284c7" stroke="#38bdf8" stroke-width="1.5" />
-                <text x="190" y="413" fill="#ffffff" font-size="11" font-weight="bold" text-anchor="middle">NPCI UPI Payment Switch</text>
-                <text x="190" y="428" fill="#e0f2fe" font-size="9" text-anchor="middle">Encrypted Bank Clearing</text>
+                <rect x="80" y="390" width="220" height="50" rx="8" fill="#0284c7" stroke="#38bdf8" strokeWidth="1.5" />
+                <text x="190" y="413" fill="#ffffff" fontSize="11" fontWeight="bold" textAnchor="middle">NPCI UPI Payment Switch</text>
+                <text x="190" y="428" fill="#e0f2fe" fontSize="9" textAnchor="middle">Encrypted Bank Clearing</text>
 
-                <line x1="160" y1="350" x2="160" y2="385" stroke="#34d399" stroke-width="2" marker-end="url(#flow-arrow)" />
+                <line x1="160" y1="350" x2="160" y2="385" stroke="#34d399" strokeWidth="2" markerEnd="url(#flow-arrow)" />
               </svg>
             </div>
           </div>

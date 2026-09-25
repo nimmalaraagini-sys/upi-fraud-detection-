@@ -31,6 +31,7 @@ import { UserProfileModal } from "./UserProfileModal";
 import { UserLoginModal } from "./UserLoginModal";
 import { ProjectDocumentationModal } from "./ProjectDocumentationModal";
 import { downloadProjectPdf } from "../utils/downloadProjectDoc";
+import { PaymentSecurityStatusGauge } from "./PaymentSecurityStatusGauge";
 
 export type ScreenState = 
   | "HOME" 
@@ -1561,134 +1562,27 @@ export const SafeUpiApp: React.FC<SafeUpiAppProps> = ({
                     PAYMENT SECURITY STATUS & REAL-TIME SAFETY INDICATORS
                    ========================================================================= */}
                 <div id="payment-security-status-container" className="space-y-3.5 mb-4">
-                  {/* 1. Payment Security Status Banner */}
-                  <div
-                    id="payment-security-status-card"
-                    className={`p-4 rounded-2xl border transition-all duration-300 shadow-md ${
-                      liveRiskAssessment.isLow
-                        ? "bg-gradient-to-r from-emerald-950/90 via-slate-900 to-emerald-950/90 border-emerald-500/40 text-emerald-100"
-                        : liveRiskAssessment.isMedium
-                        ? "bg-gradient-to-r from-amber-950/90 via-slate-900 to-amber-950/90 border-amber-500/40 text-amber-100"
-                        : "bg-gradient-to-r from-rose-950/95 via-slate-900 to-rose-950/95 border-rose-500/60 text-rose-100 animate-pulse"
-                    }`}
-                  >
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                      <div className="flex items-start gap-3 min-w-0">
-                        <div className="relative shrink-0 mt-0.5 sm:mt-0">
-                          <div className={`w-10 h-10 rounded-xl flex items-center justify-center border shadow-inner ${
-                            liveRiskAssessment.isLow
-                              ? "bg-emerald-500/20 text-emerald-400 border-emerald-500/40"
-                              : liveRiskAssessment.isMedium
-                              ? "bg-amber-500/20 text-amber-400 border-amber-500/40"
-                              : "bg-rose-500/20 text-rose-400 border-rose-500/50"
-                          }`}>
-                            {liveRiskAssessment.isLow ? (
-                              <ShieldCheck className="w-5 h-5 text-emerald-400" />
-                            ) : liveRiskAssessment.isMedium ? (
-                              <HelpCircle className="w-5 h-5 text-amber-400" />
-                            ) : (
-                              <ShieldAlert className="w-5 h-5 text-rose-400" />
-                            )}
-                          </div>
-                          <span className="absolute -top-1 -right-1 flex h-2.5 w-2.5">
-                            <span className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${
-                              liveRiskAssessment.isLow ? "bg-emerald-400" : liveRiskAssessment.isMedium ? "bg-amber-400" : "bg-rose-400"
-                            }`} />
-                            <span className={`relative inline-flex rounded-full h-2.5 w-2.5 ${
-                              liveRiskAssessment.isLow ? "bg-emerald-500" : liveRiskAssessment.isMedium ? "bg-amber-500" : "bg-rose-500"
-                            }`} />
-                          </span>
-                        </div>
-
-                        <div className="min-w-0">
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <h3 className="text-xs font-bold text-slate-300 uppercase tracking-wider">
-                              Payment Security Status
-                            </h3>
-                            <span className={`px-2 py-0.5 rounded-full text-[10px] font-black border ${
-                              liveRiskAssessment.isLow
-                                ? "bg-emerald-500/20 text-emerald-300 border-emerald-500/40"
-                                : liveRiskAssessment.isMedium
-                                ? "bg-amber-500/20 text-amber-300 border-amber-500/40"
-                                : "bg-rose-500/20 text-rose-300 border-rose-500/40"
-                            }`}>
-                              {liveRiskAssessment.isLow 
-                                ? "Verified Safe · Low Risk"
-                                : liveRiskAssessment.isMedium
-                                ? "Caution · Review Recommended"
-                                : "Critical Alert · High Risk"}
-                            </span>
-                          </div>
-                          <p className="text-xs text-slate-200 font-medium mt-0.5">
-                            {liveRiskAssessment.isLow
-                              ? "All real-time safety indicators passed. Payee identity and spending velocity match your normal baseline."
-                              : liveRiskAssessment.isMedium
-                              ? "Telemetry alert: New beneficiary or unusual transaction timing detected. Verify recipient carefully."
-                              : "High-risk trigger intercepted! Known fraud keywords or active coercion detected. Review before proceeding."}
-                          </p>
-                        </div>
-                      </div>
-
-                      <div className="flex items-center gap-2 shrink-0 self-end sm:self-center">
-                        <button
-                          type="button"
-                          id="btn-share-safe-verification"
-                          onClick={handleCopySafeVerifiedSummary}
-                          title="Copy security verification summary for personal records"
-                          className={`p-2 rounded-xl border transition-all cursor-pointer flex items-center gap-1.5 active:scale-95 text-xs font-bold shadow-xs ${
-                            liveRiskAssessment.isLow
-                              ? "bg-emerald-900/40 hover:bg-emerald-800/60 border-emerald-500/40 text-emerald-300"
-                              : liveRiskAssessment.isMedium
-                              ? "bg-amber-900/40 hover:bg-amber-800/60 border-amber-500/40 text-amber-300"
-                              : "bg-rose-900/40 hover:bg-rose-800/60 border-rose-500/40 text-rose-300"
-                          }`}
-                        >
-                          {copiedSafeVerified ? (
-                            <>
-                              <Check className="w-3.5 h-3.5" />
-                              <span>{t.copied}</span>
-                            </>
-                          ) : (
-                            <>
-                              <Share2 className="w-3.5 h-3.5" />
-                              <span>Share Status</span>
-                            </>
-                          )}
-                        </button>
-                        <div className={`px-2.5 py-1 rounded-xl border text-center font-mono ${
-                          liveRiskAssessment.isLow
-                            ? "bg-emerald-900/50 border-emerald-500/30 text-emerald-300"
-                            : liveRiskAssessment.isMedium
-                            ? "bg-amber-900/50 border-amber-500/30 text-amber-300"
-                            : "bg-rose-900/50 border-rose-500/30 text-rose-300"
-                        }`}>
-                          <div className="text-[9px] uppercase tracking-wider text-slate-400">Confidence</div>
-                          <div className="text-xs font-black">{100 - liveRiskAssessment.score}%</div>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Visual Security Gauge */}
-                    <div className="mt-3 pt-2.5 border-t border-white/10 space-y-1">
-                      <div className="flex items-center justify-between text-[10px] font-bold font-mono">
-                        <span className="text-emerald-400">0% (Safe & Protected)</span>
-                        <span className="text-amber-400">50% (Review Advised)</span>
-                        <span className="text-rose-400">100% (Fraud Blocked)</span>
-                      </div>
-                      <div className="w-full h-2 rounded-full bg-slate-800/90 overflow-hidden relative p-0.5 border border-white/10">
-                        <div
-                          className={`h-full rounded-full transition-all duration-500 ${
-                            liveRiskAssessment.isLow
-                              ? "bg-gradient-to-r from-emerald-500 to-emerald-400"
-                              : liveRiskAssessment.isMedium
-                              ? "bg-gradient-to-r from-emerald-500 via-amber-400 to-amber-500"
-                              : "bg-gradient-to-r from-amber-500 via-rose-500 to-rose-600"
-                          }`}
-                          style={{ width: `${Math.max(5, liveRiskAssessment.score)}%` }}
-                        />
-                      </div>
-                    </div>
-                  </div>
+                  <PaymentSecurityStatusGauge
+                    score={liveRiskAssessment.score}
+                    riskLevel={liveRiskAssessment.level}
+                    amount={amount}
+                    recipient={recipient}
+                    timeStr={timeStr}
+                    isNewDevice={isNewDevice}
+                    isNewRecipient={isNewRecipient}
+                    activePhoneCall={activePhoneCall}
+                    isCollectRequest={isCollectRequest}
+                    matchedMuleEntry={!!matchedMuleEntry}
+                    onApplyPreset={(inputs) => {
+                      setAmount(inputs.amount);
+                      setRecipient(inputs.recipient);
+                      setTimeStr(inputs.timeStr);
+                      setIsNewDevice(inputs.isNewDevice);
+                      setIsNewRecipient(inputs.isNewRecipient);
+                      setActivePhoneCall(inputs.activeCall);
+                      setIsCollectRequest(inputs.isCollectRequest);
+                    }}
+                  />
 
                   {/* 2. Real-time Safety Indicators Grid */}
                   <div className="bg-slate-900/60 rounded-2xl p-3.5 border border-slate-750">

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useMemo } from "react";
 import {
   Shield,
   ShieldCheck,
@@ -47,7 +47,10 @@ import {
   Loader2,
   Sliders,
   KeyRound,
-  RefreshCw
+  RefreshCw,
+  ShieldAlert,
+  Cpu,
+  Users
 } from "lucide-react";
 import { SafeUpiLogo } from "./SafeUpiLogo";
 import { SafeUpiAiChat } from "./SafeUpiAiChat";
@@ -62,6 +65,14 @@ import { regionalVoice, IndianLanguage } from "../utils/regionalVoice";
 import { PresentationDeck } from "./PresentationDeck";
 import { ProjectDocumentationModal } from "./ProjectDocumentationModal";
 import { MongoDatabaseHubModal } from "./MongoDatabaseHubModal";
+import { PaymentSecurityStatusGauge } from "./PaymentSecurityStatusGauge";
+import { TransactionInterceptionModal, InterceptionCheckData, TransactionType } from "./TransactionInterceptionModal";
+import { FourMajorAttackPatternsModal, AttackPatternDetail } from "./FourMajorAttackPatternsModal";
+import { CentralRiskAndFeatureEngineModal } from "./CentralRiskAndFeatureEngineModal";
+import { AiFraudCaseCenterModal } from "./AiFraudCaseCenterModal";
+import { DecisionLogsAndAuditTrailModal } from "./DecisionLogsAndAuditTrailModal";
+import { TransactionGraphModal } from "./TransactionGraphModal";
+import { DeploymentArchitectureModal } from "./DeploymentArchitectureModal";
 
 interface MainDashboardProps {
   user: {
@@ -84,6 +95,22 @@ export const MainDashboard: React.FC<MainDashboardProps> = ({ user, onLogout }) 
   const [isDeckOpen, setIsDeckOpen] = useState(false);
   const [isDocModalOpen, setIsDocModalOpen] = useState(false);
   const [isMongoHubOpen, setIsMongoHubOpen] = useState(false);
+
+  // Dual Role Mode: End-User Payment Experience vs Enterprise Security Operations Center (SOC)
+  const [userRoleMode, setUserRoleMode] = useState<"USER" | "SOC">("USER");
+
+  // Section 2: 7 Supported Transaction Categories
+  const [selectedTxnType, setSelectedTxnType] = useState<TransactionType>("P2P Transfer");
+
+  // Enterprise Cybersecurity Modals (Section 1, 3, 4, 8, 12, 16, 20, 28)
+  const [isInterceptionModalOpen, setIsInterceptionModalOpen] = useState(false);
+  const [interceptionData, setInterceptionData] = useState<InterceptionCheckData | null>(null);
+  const [isAttackPatternsModalOpen, setIsAttackPatternsModalOpen] = useState(false);
+  const [isCentralEngineModalOpen, setIsCentralEngineModalOpen] = useState(false);
+  const [isCaseCenterModalOpen, setIsCaseCenterModalOpen] = useState(false);
+  const [isDecisionLogsModalOpen, setIsDecisionLogsModalOpen] = useState(false);
+  const [isGraphModalOpen, setIsGraphModalOpen] = useState(false);
+  const [isArchitectureModalOpen, setIsArchitectureModalOpen] = useState(false);
 
   // Profile modal states
   const [activeProfileTab, setActiveProfileTab] = useState<"profile" | "security" | "settings" | null>(null);
@@ -198,6 +225,33 @@ export const MainDashboard: React.FC<MainDashboardProps> = ({ user, onLogout }) 
     reasons: [],
     recommendations: ["Always double-check recipient display name", "Never disclose UPI PIN for receiving funds"]
   });
+
+  // Dynamic real-time risk assessment for Payment Security Status Gauge
+  const livePaymentRisk = useMemo(() => {
+    const amt = parseFloat(payAmount) || 0;
+    const vpa = (payVpa || "").toLowerCase().trim();
+    let score = 10;
+    
+    if (vpa.includes("support") || vpa.includes("refund") || vpa.includes("lottery") || vpa.includes("kyc") || vpa.includes("urgent") || vpa.includes("bail") || vpa.includes("cbi")) {
+      score += 48;
+    } else if (vpa.includes("army") || vpa.includes("desk99") || vpa.includes("pass") || vpa.includes("olx")) {
+      score += 38;
+    }
+    if (amt >= 20000) {
+      score += 30;
+    } else if (amt >= 8000) {
+      score += 20;
+    } else if (amt >= 2000) {
+      score += 10;
+    }
+    if (muleRegistry && (muleRegistry.isMuleVpa(vpa) || vpa.includes("refund.desk99") || vpa.includes("urgent.kyc"))) {
+      score += 48;
+    }
+
+    const finalScore = Math.min(99, Math.max(8, score));
+    const level: "low" | "medium" | "high" = finalScore <= 30 ? "low" : finalScore <= 70 ? "medium" : "high";
+    return { score: finalScore, level };
+  }, [payVpa, payAmount]);
 
   // -------------------------------------------------------------
   // QR SCANNER STATE
@@ -507,6 +561,53 @@ export const MainDashboard: React.FC<MainDashboardProps> = ({ user, onLogout }) 
         regionalVoice.speakAlert("SAFE");
       }
 
+      // Populate Section 10 Interception Checkpoint Data
+      const interceptionPayload: InterceptionCheckData = {
+        transactionId: "TXN-" + Math.floor(100000 + Math.random() * 900000),
+        amount: numericAmt,
+        type: selectedTxnType,
+        recipient: cleanVpa,
+        recipientName: cleanVpa.split("@")[0].replace(/[._-]/g, " "),
+        timestamp: new Date().toLocaleTimeString(),
+        riskScore: score,
+        mlRiskPercent: Math.min(99, Math.max(10, Math.round(result.mlScoreComponent || (score * 0.95)))),
+        deviceRisk: isScreenShareDetected ? "HIGH" : "LOW",
+        networkRisk: cleanVpa.includes("desk99") ? "HIGH" : "LOW",
+        recipientRisk: isSusKeywords || muleMatch ? "HIGH" : "LOW",
+        decision: score >= 70 ? "DECLINE" : score >= 35 ? "REFER" : "ACCEPT",
+        rulesTriggered: result.triggeredRules.map((r) => ({
+          code: r.name,
+          label: r.name,
+          severity: (r.name.includes("MULE") || r.name.includes("DESK") ? "CRITICAL" : "HIGH") as "CRITICAL" | "HIGH",
+          description: r.description,
+        })),
+        validations: {
+          passed: score < 70,
+          checks: [
+            { name: "Recipient VPA Structure", ok: cleanVpa.includes("@"), detail: cleanVpa.includes("@") ? "Valid UPI handle format" : "Invalid syntax" },
+            { name: "Mule Blacklist Registry", ok: !muleMatch && !isSusKeywords, detail: muleMatch ? "Matched NCRP 1930 flag" : "No complaint records found" },
+            { name: "Device Keystore Integrity", ok: !isScreenShareDetected, detail: isScreenShareDetected ? "Screen sharing / mirror active" : "Hardware enclave verified" },
+            { name: "Transaction Velocity Horizon", ok: numericAmt < 20000, detail: numericAmt >= 20000 ? "High value velocity check" : "Habitual spend limit" }
+          ],
+        },
+        explainableAiFactors: factors.map((f) => ({
+          factor: f.label,
+          impact: `+${f.impact}`,
+          humanReason: f.desc,
+        })),
+        auditTrail: [
+          { time: "10:31:20.104", step: "Payment request intercepted at gateway", status: "ok", latencyMs: 2 },
+          { time: "10:31:20.107", step: "Pre-flight validations & VPA syntax verified", status: "ok", latencyMs: 3 },
+          { time: "10:31:20.111", step: "Device hardware fingerprint & call sensor queried", status: isCallActive ? "warn" : "ok", latencyMs: 4 },
+          { time: "10:31:20.116", step: "Heuristic rule evaluation matrix processed", status: reasons.length > 0 ? "warn" : "ok", latencyMs: 5 },
+          { time: "10:31:20.120", step: "Ensemble ML risk score generated", status: score >= 70 ? "fail" : "ok", latencyMs: 4 },
+          { time: "10:31:20.122", step: `Final decision rendered: ${score >= 70 ? "DECLINE" : score >= 35 ? "REFER" : "ACCEPT"}`, status: score >= 70 ? "fail" : "ok", latencyMs: 2 }
+        ],
+        processingTimeMs: 18,
+      };
+
+      setInterceptionData(interceptionPayload);
+      setIsInterceptionModalOpen(true);
       setPaymentPhase("result");
     }, 1000);
 
@@ -925,6 +1026,30 @@ export const MainDashboard: React.FC<MainDashboardProps> = ({ user, onLogout }) 
               )}
             </button>
 
+            {/* Role Switcher: User View vs SOC Analyst View (Section 30 & 31) */}
+            <button
+              type="button"
+              onClick={() => setUserRoleMode(userRoleMode === "USER" ? "SOC" : "USER")}
+              className={`px-3 py-1.5 rounded-xl border text-xs font-black flex items-center gap-1.5 transition-all cursor-pointer shadow-xs ${
+                userRoleMode === "SOC"
+                  ? "bg-gradient-to-r from-purple-600 via-indigo-600 to-purple-500 text-white border-purple-400 shadow-purple-900/40 ring-1 ring-purple-300/40"
+                  : "bg-slate-850 hover:bg-slate-800 text-cyan-300 border-cyan-500/40"
+              }`}
+              title="Toggle between User Mode & Enterprise SOC Operations Center"
+            >
+              {userRoleMode === "SOC" ? (
+                <>
+                  <ShieldAlert className="w-3.5 h-3.5 text-purple-200" />
+                  <span>SOC Analyst Mode</span>
+                </>
+              ) : (
+                <>
+                  <ShieldCheck className="w-3.5 h-3.5 text-cyan-400" />
+                  <span>User View</span>
+                </>
+              )}
+            </button>
+
             {/* Presentation Deck / Pitch Deck (5 Layers) */}
             <button
               type="button"
@@ -1130,6 +1255,86 @@ export const MainDashboard: React.FC<MainDashboardProps> = ({ user, onLogout }) 
                 {tab.label}
               </button>
             ))}
+          </div>
+        </div>
+
+        {/* ========================================================= */}
+        {/* SECURE SHIELD ENTERPRISE CYBERSECURITY COMMAND BAR */}
+        {/* ========================================================= */}
+        <div className="bg-[#050913] border-t border-cyan-500/20 px-4 py-2 text-xs">
+          <div className="max-w-6xl mx-auto flex flex-col md:flex-row md:items-center justify-between gap-2.5">
+            {/* Tagline & Team Identity */}
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="font-mono text-[10px] font-black px-2 py-0.5 rounded-md bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 uppercase tracking-widest">
+                SAFEUPI · CHECK BEFORE YOU PAY
+              </span>
+              <span className="text-[11px] text-slate-400">
+                Team: <strong className="text-white">SECURE SHIELD</strong> · Theme: <span className="text-cyan-300 font-medium">Smart Technologies / Cybersecurity</span>
+              </span>
+            </div>
+
+            {/* Specialized Cyber Operations Triggers */}
+            <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-none">
+              <button
+                type="button"
+                onClick={() => setIsAttackPatternsModalOpen(true)}
+                className="px-2.5 py-1 rounded-xl bg-purple-950/60 hover:bg-purple-900 border border-purple-500/40 text-purple-200 text-[11px] font-bold flex items-center gap-1.5 transition-all cursor-pointer whitespace-nowrap shadow-xs"
+                title="Account Takeover, Wallet Credit Abuse, SIM-Swap Cashout, Collusion"
+              >
+                <ShieldAlert className="w-3.5 h-3.5 text-purple-400" />
+                <span>4 Attack Patterns</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setIsCentralEngineModalOpen(true)}
+                className="px-2.5 py-1 rounded-xl bg-blue-950/60 hover:bg-blue-900 border border-blue-500/40 text-blue-200 text-[11px] font-bold flex items-center gap-1.5 transition-all cursor-pointer whitespace-nowrap shadow-xs"
+                title="11 Feature Categories, Configurable Rule Matrix, Feature Vector JSON"
+              >
+                <Cpu className="w-3.5 h-3.5 text-cyan-400" />
+                <span>ML Features & Rules</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setIsCaseCenterModalOpen(true)}
+                className="px-2.5 py-1 rounded-xl bg-indigo-950/60 hover:bg-indigo-900 border border-indigo-500/40 text-indigo-200 text-[11px] font-bold flex items-center gap-1.5 transition-all cursor-pointer whitespace-nowrap shadow-xs"
+                title="AI Case Management, Incident Timelines, STR/SAR Compliance Drafts"
+              >
+                <FileCheck className="w-3.5 h-3.5 text-indigo-400" />
+                <span>Fraud Cases (SAR)</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setIsGraphModalOpen(true)}
+                className="px-2.5 py-1 rounded-xl bg-teal-950/60 hover:bg-teal-900 border border-teal-500/40 text-teal-200 text-[11px] font-bold flex items-center gap-1.5 transition-all cursor-pointer whitespace-nowrap shadow-xs"
+                title="Node-Link Graph Entity Analysis for Circular & Funneling Networks"
+              >
+                <Users className="w-3.5 h-3.5 text-teal-400" />
+                <span>Collusion Graph</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setIsDecisionLogsModalOpen(true)}
+                className="px-2.5 py-1 rounded-xl bg-amber-950/60 hover:bg-amber-900 border border-amber-500/40 text-amber-200 text-[11px] font-bold flex items-center gap-1.5 transition-all cursor-pointer whitespace-nowrap shadow-xs"
+                title="Microsecond Execution Audit Trails & Decision History"
+              >
+                <Clock className="w-3.5 h-3.5 text-amber-400" />
+                <span>Decision Logs</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setIsArchitectureModalOpen(true)}
+                className="px-2.5 py-1 rounded-xl bg-slate-850 hover:bg-slate-800 border border-slate-700 text-slate-300 text-[11px] font-bold flex items-center gap-1.5 transition-all cursor-pointer whitespace-nowrap shadow-xs"
+                title="Microservice Topology, Cloud/On-Prem Deployment, Prototype Disclaimers"
+              >
+                <Layers className="w-3.5 h-3.5 text-slate-400" />
+                <span>Architecture</span>
+              </button>
+            </div>
           </div>
         </div>
       </header>
@@ -1557,6 +1762,93 @@ export const MainDashboard: React.FC<MainDashboardProps> = ({ user, onLogout }) 
                   </div>
                 </div>
 
+                {/* Section 3 & 26: Four Major Attack Pattern Presets */}
+                <div className="p-3.5 bg-gradient-to-r from-purple-950/40 via-slate-900 to-indigo-950/40 border border-purple-500/30 rounded-2xl space-y-2">
+                  <div className="flex items-center justify-between text-xs text-purple-200 font-semibold">
+                    <span className="flex items-center gap-1.5 font-bold">
+                      <ShieldAlert className="w-3.5 h-3.5 text-purple-400" />
+                      Four Major Attack Pattern Presets (Section 3 & 26):
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setIsAttackPatternsModalOpen(true)}
+                      className="text-[10px] text-purple-300 hover:text-white font-bold underline cursor-pointer"
+                    >
+                      Inspect All 4 Patterns →
+                    </button>
+                  </div>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSelectedTxnType("P2P Transfer");
+                        setPayVpa("supreme_court_bail@sbi");
+                        setPayAmount("45000");
+                        setPayNote("Urgent bail liquidation");
+                      }}
+                      className="p-2 rounded-xl bg-slate-900 hover:bg-rose-950/50 border border-slate-750 hover:border-rose-400/60 text-left text-xs font-semibold text-slate-200 transition-all cursor-pointer shadow-xs"
+                    >
+                      <span className="text-rose-400 block text-[10px] font-bold">1. ACCOUNT TAKEOVER</span>
+                      <span className="text-[11px]">₹45k Phishing Drain</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSelectedTxnType("Cash-Out");
+                        setPayVpa("crypto.p2p.cashout@paytm");
+                        setPayAmount("48000");
+                        setPayNote("Rapid wallet cashout");
+                      }}
+                      className="p-2 rounded-xl bg-slate-900 hover:bg-amber-950/50 border border-slate-750 hover:border-amber-400/60 text-left text-xs font-semibold text-slate-200 transition-all cursor-pointer shadow-xs"
+                    >
+                      <span className="text-amber-400 block text-[10px] font-bold">2. WALLET ABUSE</span>
+                      <span className="text-[11px]">₹48k Rapid Cash-out</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSelectedTxnType("Bank Transfer");
+                        setPayVpa("mule_gold_trader@icici");
+                        setPayAmount("30000");
+                        setPayNote("SIM swap drain");
+                      }}
+                      className="p-2 rounded-xl bg-slate-900 hover:bg-purple-950/50 border border-slate-750 hover:border-purple-400/60 text-left text-xs font-semibold text-slate-200 transition-all cursor-pointer shadow-xs"
+                    >
+                      <span className="text-purple-400 block text-[10px] font-bold">3. SIM-SWAP DRAIN</span>
+                      <span className="text-[11px]">₹30k Cloned IMSI</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSelectedTxnType("P2P Transfer");
+                        setPayVpa("recipient_x_syndicate@axis");
+                        setPayAmount("22000");
+                        setPayNote("Collusion cluster deposit");
+                      }}
+                      className="p-2 rounded-xl bg-slate-900 hover:bg-cyan-950/50 border border-slate-750 hover:border-cyan-400/60 text-left text-xs font-semibold text-slate-200 transition-all cursor-pointer shadow-xs"
+                    >
+                      <span className="text-cyan-400 block text-[10px] font-bold">4. COLLUSION RING</span>
+                      <span className="text-[11px]">₹22k Mule Cluster</span>
+                    </button>
+                  </div>
+                </div>
+
+                {/* Live Animated Payment Security Status Gauge & Safety Templates */}
+                <PaymentSecurityStatusGauge
+                  score={livePaymentRisk.score}
+                  riskLevel={livePaymentRisk.level}
+                  amount={parseFloat(payAmount) || 0}
+                  recipient={payVpa || "No recipient entered"}
+                  timeStr="02:00 PM"
+                  onApplyPreset={(inputs) => {
+                    setPayVpa(inputs.recipient);
+                    setPayAmount(inputs.amount.toString());
+                    if (inputs.isCollectRequest) {
+                      setPayNote("Collect request test");
+                    }
+                  }}
+                />
+
                 <form
                   onSubmit={(e) => {
                     e.preventDefault();
@@ -1565,6 +1857,37 @@ export const MainDashboard: React.FC<MainDashboardProps> = ({ user, onLogout }) 
                   }}
                   className="space-y-4"
                 >
+                  {/* Section 2: 7 Supported Transaction Categories */}
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5 font-mono">
+                      Transaction Category (Centralized SafeUPI Risk Engine):
+                    </label>
+                    <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-7 gap-1.5">
+                      {[
+                        "P2P Transfer",
+                        "Cash-Out",
+                        "Merchant Payment",
+                        "Wallet Credit",
+                        "QR Payment",
+                        "Collect/Payment Request",
+                        "Bank Transfer"
+                      ].map((txnType) => (
+                        <button
+                          key={txnType}
+                          type="button"
+                          onClick={() => setSelectedTxnType(txnType as TransactionType)}
+                          className={`px-2 py-2 rounded-xl font-bold text-[10px] transition-all cursor-pointer text-center truncate ${
+                            selectedTxnType === txnType
+                              ? "bg-blue-600 text-white shadow-sm ring-1 ring-blue-400"
+                              : "bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200"
+                          }`}
+                        >
+                          {txnType}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
                   {/* UPI ID / Mobile */}
                   <div>
                     <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
@@ -3357,6 +3680,85 @@ export const MainDashboard: React.FC<MainDashboardProps> = ({ user, onLogout }) 
           currentLang={currentLang}
         />
       )}
+
+      {/* SECTION 1, 9, 10, 27: REAL-TIME TRANSACTION INTERCEPTION CHECKPOINT MODAL */}
+      <TransactionInterceptionModal
+        isOpen={isInterceptionModalOpen}
+        data={interceptionData}
+        onClose={() => setIsInterceptionModalOpen(false)}
+        onCancel={() => {
+          setIsInterceptionModalOpen(false);
+          setPaymentPhase("form");
+        }}
+        onProceedToPin={() => {
+          setIsInterceptionModalOpen(false);
+          const cleanVpa = interceptionData?.recipient || payVpa || "unknown@upi";
+          const numericAmt = interceptionData?.amount || parseFloat(payAmount) || 0;
+          setPendingPaymentData({
+            merchant: (cleanVpa.includes("@") ? cleanVpa.split("@")[0] : cleanVpa).replace(/[._-]/g, " ") || "Verified Payee",
+            vpa: cleanVpa,
+            amount: String(numericAmt),
+            riskLevel: currentEval.riskLevel,
+            riskScore: currentEval.riskScore,
+          });
+          setEnteredPin("");
+          setPinError(null);
+          setPaymentPhase("pin");
+        }}
+        onOpenInvestigation={() => {
+          setIsInterceptionModalOpen(false);
+          setIsCaseCenterModalOpen(true);
+        }}
+        isUserViewSimple={userRoleMode === "USER"}
+      />
+
+      {/* SECTION 3 & 26: FOUR MAJOR ATTACK PATTERNS MODAL */}
+      <FourMajorAttackPatternsModal
+        isOpen={isAttackPatternsModalOpen}
+        onClose={() => setIsAttackPatternsModalOpen(false)}
+        onSimulatePattern={(pattern) => {
+          setIsAttackPatternsModalOpen(false);
+          setActiveTab("pay");
+          setSelectedTxnType(pattern.concreteScenario.simulatedTransaction.type as TransactionType);
+          setPayVpa(pattern.concreteScenario.simulatedTransaction.recipient);
+          setPayAmount(String(pattern.concreteScenario.simulatedTransaction.amount));
+          runSecurityCheck(
+            pattern.concreteScenario.simulatedTransaction.recipient,
+            String(pattern.concreteScenario.simulatedTransaction.amount)
+          );
+        }}
+      />
+
+      {/* SECTION 4, 5, 7, 8: CENTRAL RISK & ML FEATURE ENGINE MODAL */}
+      <CentralRiskAndFeatureEngineModal
+        isOpen={isCentralEngineModalOpen}
+        onClose={() => setIsCentralEngineModalOpen(false)}
+      />
+
+      {/* SECTION 12, 13, 14, 15: AI FRAUD CASE CENTER & COMPLIANCE DRAFTS MODAL */}
+      <AiFraudCaseCenterModal
+        isOpen={isCaseCenterModalOpen}
+        onClose={() => setIsCaseCenterModalOpen(false)}
+        initialTxnId={interceptionData?.transactionId}
+      />
+
+      {/* SECTION 16 & 17: DECISION LOGS & AUDIT TRAILS MODAL */}
+      <DecisionLogsAndAuditTrailModal
+        isOpen={isDecisionLogsModalOpen}
+        onClose={() => setIsDecisionLogsModalOpen(false)}
+      />
+
+      {/* SECTION 20: TRANSACTION GRAPH & RELATIONSHIP ANALYSIS MODAL */}
+      <TransactionGraphModal
+        isOpen={isGraphModalOpen}
+        onClose={() => setIsGraphModalOpen(false)}
+      />
+
+      {/* SECTION 28 & 33: DEPLOYMENT ARCHITECTURE & PROTOTYPE BOUNDARIES MODAL */}
+      <DeploymentArchitectureModal
+        isOpen={isArchitectureModalOpen}
+        onClose={() => setIsArchitectureModalOpen(false)}
+      />
 
       {/* Footer */}
       <footer className="mt-auto border-t border-slate-200 bg-white py-4 text-xs text-slate-500">

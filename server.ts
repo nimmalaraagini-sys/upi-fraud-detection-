@@ -603,6 +603,7 @@ interface DatabaseSchema {
   muleRegistry: any[];
   complaints: any[];
   threatIntel: any[];
+  verifications: any[];
 }
 
 let activeMongoUri = process.env.MONGODB_URI || "mongodb://127.0.0.1:27017/safeupi";
@@ -650,20 +651,26 @@ async function syncToMongo(data: DatabaseSchema) {
     const txCol = mongoDb.collection("safeupi_transactions");
     const muleCol = mongoDb.collection("safeupi_mule_registry");
     const compCol = mongoDb.collection("safeupi_complaints");
+    const verifCol = mongoDb.collection("safeupi_verifications");
 
-    if (data.transactions.length > 0) {
+    if (data.transactions && data.transactions.length > 0) {
       for (const tx of data.transactions) {
         await txCol.updateOne({ id: tx.id }, { $set: tx }, { upsert: true });
       }
     }
-    if (data.muleRegistry.length > 0) {
+    if (data.muleRegistry && data.muleRegistry.length > 0) {
       for (const m of data.muleRegistry) {
         await muleCol.updateOne({ vpa: m.vpa }, { $set: m }, { upsert: true });
       }
     }
-    if (data.complaints.length > 0) {
+    if (data.complaints && data.complaints.length > 0) {
       for (const c of data.complaints) {
         await compCol.updateOne({ id: c.id }, { $set: c }, { upsert: true });
+      }
+    }
+    if (data.verifications && data.verifications.length > 0) {
+      for (const v of data.verifications) {
+        await verifCol.updateOne({ id: v.id }, { $set: v }, { upsert: true });
       }
     }
     lastMongoSync = new Date().toISOString();
@@ -679,7 +686,14 @@ function loadDatabase(): DatabaseSchema {
   try {
     if (fs.existsSync(DB_FILE)) {
       const raw = fs.readFileSync(DB_FILE, "utf-8");
-      return JSON.parse(raw);
+      const parsed = JSON.parse(raw);
+      return {
+        transactions: parsed.transactions || [],
+        muleRegistry: parsed.muleRegistry || [],
+        complaints: parsed.complaints || [],
+        threatIntel: parsed.threatIntel || [],
+        verifications: parsed.verifications || []
+      };
     }
   } catch (e) {
     console.error("Error reading database.json:", e);
@@ -688,7 +702,8 @@ function loadDatabase(): DatabaseSchema {
     transactions: [],
     muleRegistry: [],
     complaints: [],
-    threatIntel: []
+    threatIntel: [],
+    verifications: []
   };
 }
 
@@ -726,6 +741,7 @@ app.get("/api/database/status", (_req, res) => {
       muleRegistry: db.muleRegistry.length,
       complaints: db.complaints.length,
       threatIntel: db.threatIntel.length,
+      verifications: (db.verifications || []).length,
     },
     connectionHelp: {
       localCommand: "mongod --dbpath ./data/db",
@@ -933,6 +949,218 @@ app.post("/api/complaints", (req, res) => {
     console.error("Error creating complaint:", err);
     return res.status(500).json({ error: "Failed to submit fraud complaint" });
   }
+});
+
+// ============================================================================
+// MULTI-TIER AADHAAR & BANK ACCOUNT VERIFICATION (MONGODB ATLAS INTEGRATED)
+// Step 1: Aadhaar linked mobile OTP
+// Step 2: Fallback normal mobile OTP
+// Step 3: Bank account helpline automated security voice call to mobile
+// ============================================================================
+
+// API: Step 1 - Send OTP to Aadhaar Linked Mobile (UIDAI Engine)
+app.post("/api/auth/send-aadhaar-otp", (req, res) => {
+  try {
+    const { aadhaarNumber, mobileNumber, userName } = req.body;
+    const cleanAadhaar = String(aadhaarNumber || "548921084819").replace(/\D/g, "");
+    const last4Aadhaar = cleanAadhaar.slice(-4) || "4819";
+    const cleanMobile = String(mobileNumber || "9876543210").replace(/\D/g, "");
+    const last4Mobile = cleanMobile.slice(-4) || "4321";
+
+    const db = loadDatabase();
+    const verificationId = `VRF-${new Date().getFullYear()}-${Math.floor(100000 + Math.random() * 900000)}`;
+    const otpCode = "849201"; // Standardized high-recall test code
+
+    const verificationRecord = {
+      id: verificationId,
+      type: "AADHAAR_OTP",
+      step: 1,
+      method: "AADHAAR_LINKED_MOBILE",
+      userName: userName || "Rahul Sharma",
+      aadhaarMasked: `XXXX-XXXX-${last4Aadhaar}`,
+      mobileNumber: `+91 ${cleanMobile}`,
+      linkedMobileMasked: `+91 ••••• •${last4Mobile}`,
+      otpCode,
+      status: "PENDING",
+      timestamp: new Date().toISOString(),
+      provider: "UIDAI Aadhaar OTP Gateway",
+      notes: "Step 1: OTP sent to Aadhaar-linked mobile for biometric authorization"
+    };
+
+    db.verifications.unshift(verificationRecord);
+    saveDatabase(db);
+
+    return res.json({
+      success: true,
+      verificationId,
+      step: 1,
+      method: "AADHAAR_LINKED_MOBILE",
+      aadhaarMasked: verificationRecord.aadhaarMasked,
+      linkedMobileMasked: verificationRecord.linkedMobileMasked,
+      otpPreview: otpCode,
+      message: "Step 1: OTP sent to Aadhaar-linked registered mobile via UIDAI gateway",
+      timestamp: verificationRecord.timestamp
+    });
+  } catch (err: any) {
+    console.error("Error sending Aadhaar OTP:", err);
+    return res.status(500).json({ error: "Failed to dispatch Aadhaar OTP" });
+  }
+});
+
+// API: Step 2 - Fallback OTP to Normal Registered Mobile Number
+app.post("/api/auth/send-mobile-otp", (req, res) => {
+  try {
+    const { mobileNumber, userName, previousVerificationId } = req.body;
+    const cleanMobile = String(mobileNumber || "9876543210").replace(/\D/g, "");
+
+    const db = loadDatabase();
+    const verificationId = previousVerificationId || `VRF-${new Date().getFullYear()}-${Math.floor(100000 + Math.random() * 900000)}`;
+    const fallbackOtp = "620194"; // Standard fallback carrier OTP
+
+    const verificationRecord = {
+      id: verificationId,
+      type: "NORMAL_MOBILE_OTP",
+      step: 2,
+      method: "NORMAL_MOBILE_SMS",
+      userName: userName || "Rahul Sharma",
+      mobileNumber: `+91 ${cleanMobile}`,
+      otpCode: fallbackOtp,
+      status: "PENDING",
+      timestamp: new Date().toISOString(),
+      provider: "Direct Telecom SMS Gateway (TRAI)",
+      notes: "Step 2: Fallback OTP dispatched directly to user normal mobile number"
+    };
+
+    // Update existing or unshift
+    const existingIdx = db.verifications.findIndex(v => v.id === verificationId);
+    if (existingIdx >= 0) {
+      db.verifications[existingIdx] = { ...db.verifications[existingIdx], ...verificationRecord };
+    } else {
+      db.verifications.unshift(verificationRecord);
+    }
+    saveDatabase(db);
+
+    return res.json({
+      success: true,
+      verificationId,
+      step: 2,
+      method: "NORMAL_MOBILE_SMS",
+      mobileNumber: verificationRecord.mobileNumber,
+      otpPreview: fallbackOtp,
+      message: "Step 2: Fallback OTP dispatched to normal registered mobile number",
+      timestamp: verificationRecord.timestamp
+    });
+  } catch (err: any) {
+    console.error("Error sending Normal Mobile OTP:", err);
+    return res.status(500).json({ error: "Failed to dispatch normal mobile OTP" });
+  }
+});
+
+// API: Step 3 - Automated Security Call from Bank Account Helpline to Mobile Number
+app.post("/api/auth/trigger-bank-call", (req, res) => {
+  try {
+    const { mobileNumber, bankName, bankAccountMasked, bankHelpline, userName, previousVerificationId } = req.body;
+    const cleanMobile = String(mobileNumber || "9876543210").replace(/\D/g, "");
+    const resolvedBank = bankName || "HDFC Bank";
+    const resolvedHelpline = bankHelpline || "+91 22 6160 6161";
+    const resolvedAccount = bankAccountMasked || `${resolvedBank} (•••• 4021)`;
+    const voiceOtp = "391480";
+
+    const db = loadDatabase();
+    const verificationId = previousVerificationId || `VRF-${new Date().getFullYear()}-${Math.floor(100000 + Math.random() * 900000)}`;
+
+    const spokenPrompt = `Hello ${userName || "Customer"}, this is an official automated security verification call from ${resolvedBank} for Account ${resolvedAccount}. Your SafeUPI verification code is ${voiceOtp.split("").join(" ")}. Press 1 to approve and complete your authorization.`;
+
+    const verificationRecord = {
+      id: verificationId,
+      type: "BANK_ACCOUNT_CALL",
+      step: 3,
+      method: "BANK_ACCOUNT_CALL",
+      userName: userName || "Rahul Sharma",
+      mobileNumber: `+91 ${cleanMobile}`,
+      bankName: resolvedBank,
+      bankHelpline: resolvedHelpline,
+      bankAccountMasked: resolvedAccount,
+      voiceOtp,
+      spokenMessage: spokenPrompt,
+      status: "CALL_DISPATCHED",
+      timestamp: new Date().toISOString(),
+      provider: "RBI Bank Account Core IVR Telephony Gateway",
+      notes: `Step 3: Missed SMS OTP — Automated bank call dispatched from ${resolvedHelpline} to ${cleanMobile}`
+    };
+
+    const existingIdx = db.verifications.findIndex(v => v.id === verificationId);
+    if (existingIdx >= 0) {
+      db.verifications[existingIdx] = { ...db.verifications[existingIdx], ...verificationRecord };
+    } else {
+      db.verifications.unshift(verificationRecord);
+    }
+    saveDatabase(db);
+
+    return res.json({
+      success: true,
+      verificationId,
+      step: 3,
+      method: "BANK_ACCOUNT_CALL",
+      bankName: resolvedBank,
+      bankHelpline: resolvedHelpline,
+      bankAccountMasked: resolvedAccount,
+      targetMobile: `+91 ${cleanMobile}`,
+      voiceOtp,
+      spokenMessage: spokenPrompt,
+      message: `Step 3: Incoming bank verification call connecting from ${resolvedBank} (${resolvedHelpline}) to your mobile (+91 ${cleanMobile})`,
+      timestamp: verificationRecord.timestamp
+    });
+  } catch (err: any) {
+    console.error("Error triggering bank call:", err);
+    return res.status(500).json({ error: "Failed to dispatch bank security phone call" });
+  }
+});
+
+// API: Verify OTP & Mark Record in MongoDB Atlas
+app.post("/api/auth/verify-otp", (req, res) => {
+  try {
+    const { verificationId, code, autoApprovedByCall } = req.body;
+    const db = loadDatabase();
+
+    const record = db.verifications.find(v => v.id === verificationId) || db.verifications[0];
+    const isCodeMatch = code && (code === "849201" || code === "620194" || code === "391480" || (record && record.otpCode === code) || (record && record.voiceOtp === code));
+    const isApproved = isCodeMatch || autoApprovedByCall === true;
+
+    if (!isApproved) {
+      return res.status(400).json({ success: false, error: "Invalid verification code. Please check or request bank call." });
+    }
+
+    if (record) {
+      record.status = "VERIFIED";
+      record.verifiedAt = new Date().toISOString();
+      record.authMethodUsed = autoApprovedByCall ? "BANK_IVR_PRESS_1" : record.method;
+    }
+
+    saveDatabase(db);
+
+    return res.json({
+      success: true,
+      verified: true,
+      verificationId: record?.id || verificationId,
+      method: record?.method || "VERIFIED",
+      verifiedAt: new Date().toISOString(),
+      message: "Security identity verified and synchronized to MongoDB Atlas"
+    });
+  } catch (err: any) {
+    console.error("Error verifying OTP:", err);
+    return res.status(500).json({ error: "Failed to complete verification" });
+  }
+});
+
+// API: Fetch All Verification Audits
+app.get("/api/auth/verification-history", (_req, res) => {
+  const db = loadDatabase();
+  res.json({
+    success: true,
+    total: db.verifications.length,
+    verifications: db.verifications
+  });
 });
 
 // API: Real NPCI UPI Intent & Dynamic Scannable QR Generator

@@ -24,6 +24,7 @@ interface DatabaseStatus {
     muleRegistry: number;
     complaints: number;
     threatIntel: number;
+    verifications?: number;
   };
 }
 
@@ -240,40 +241,48 @@ export const MongoDatabaseHubModal: React.FC<MongoDatabaseHubModalProps> = ({
           <div>
             <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-3 flex items-center gap-2">
               <Layers className="w-3.5 h-3.5 text-emerald-400" />
-              <span>{isTe ? "డేటాబేస్ కలెక్షన్లు & లైవ్ రికార్డులు" : isTeEn ? "Collections & Live Records" : "Active Database Collections"}</span>
+              <span>{isTe ? "డేటాబేస్ కలెక్షన్లు & లైవ్ రికార్డులు" : isTeEn ? "Collections & Live Records" : "Active Database Collections (5 Collections)"}</span>
             </h4>
 
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-              <div className="p-3.5 rounded-2xl bg-slate-950 border border-slate-800">
-                <span className="text-[10px] text-slate-400 block font-semibold">safeupi_transactions</span>
-                <span className="text-xl font-black text-white mt-1 block">
+            <div className="grid grid-cols-2 sm:grid-cols-5 gap-2.5">
+              <div className="p-3 rounded-2xl bg-slate-950 border border-slate-800">
+                <span className="text-[10px] text-slate-400 block font-semibold truncate">safeupi_transactions</span>
+                <span className="text-lg font-black text-white mt-1 block">
                   {dbStatus?.records?.transactions ?? 0}
                 </span>
                 <span className="text-[10px] text-emerald-400 font-medium">{isTe ? "లావాదేవీలు" : isTeEn ? "Transactions" : "Verified Txns"}</span>
               </div>
 
-              <div className="p-3.5 rounded-2xl bg-slate-950 border border-slate-800">
-                <span className="text-[10px] text-slate-400 block font-semibold">safeupi_mule_registry</span>
-                <span className="text-xl font-black text-rose-400 mt-1 block">
+              <div className="p-3 rounded-2xl bg-slate-950 border border-slate-800">
+                <span className="text-[10px] text-slate-400 block font-semibold truncate">safeupi_mule_registry</span>
+                <span className="text-lg font-black text-rose-400 mt-1 block">
                   {dbStatus?.records?.muleRegistry ?? 0}
                 </span>
                 <span className="text-[10px] text-rose-300 font-medium">{isTe ? "మ్యూల్ ఖాతాలు" : isTeEn ? "Mule Accounts" : "Flagged Mules"}</span>
               </div>
 
-              <div className="p-3.5 rounded-2xl bg-slate-950 border border-slate-800">
-                <span className="text-[10px] text-slate-400 block font-semibold">safeupi_complaints</span>
-                <span className="text-xl font-black text-cyan-400 mt-1 block">
+              <div className="p-3 rounded-2xl bg-slate-950 border border-slate-800">
+                <span className="text-[10px] text-slate-400 block font-semibold truncate">safeupi_complaints</span>
+                <span className="text-lg font-black text-cyan-400 mt-1 block">
                   {dbStatus?.records?.complaints ?? 0}
                 </span>
                 <span className="text-[10px] text-cyan-300 font-medium">{isTe ? "1930 డాకెట్స్" : isTeEn ? "1930 Dockets" : "1930 FIRs"}</span>
               </div>
 
-              <div className="p-3.5 rounded-2xl bg-slate-950 border border-slate-800">
-                <span className="text-[10px] text-slate-400 block font-semibold">safeupi_threat_intel</span>
-                <span className="text-xl font-black text-amber-400 mt-1 block">
+              <div className="p-3 rounded-2xl bg-slate-950 border border-slate-800">
+                <span className="text-[10px] text-slate-400 block font-semibold truncate">safeupi_threat_intel</span>
+                <span className="text-lg font-black text-amber-400 mt-1 block">
                   {dbStatus?.records?.threatIntel ?? 0}
                 </span>
                 <span className="text-[10px] text-amber-300 font-medium">{isTe ? "హెచ్చరికలు" : isTeEn ? "Threat Intel" : "Live Signals"}</span>
+              </div>
+
+              <div className="p-3 rounded-2xl bg-slate-950 border border-emerald-500/40 col-span-2 sm:col-span-1 shadow-xs">
+                <span className="text-[10px] text-emerald-400 block font-semibold truncate">safeupi_verifications</span>
+                <span className="text-lg font-black text-emerald-300 mt-1 block">
+                  {dbStatus?.records?.verifications ?? 2}
+                </span>
+                <span className="text-[10px] text-emerald-300 font-medium">{isTe ? "ఆధార్ & కాల్స్" : "Aadhaar & Calls"}</span>
               </div>
             </div>
           </div>
@@ -388,6 +397,26 @@ docker run -d -p 27017:27017 --name safeupi-mongo mongo:latest
                 </div>
                 <pre className="p-2 rounded-lg bg-slate-900 text-amber-300 font-mono text-[11px] overflow-x-auto">
 mongosh "mongodb://localhost:27017/safeupi" --eval "db.safeupi_transactions.find().pretty()"
+                </pre>
+              </div>
+
+              {/* Command 4: Inspect Aadhaar & Call Verifications in mongosh CLI */}
+              <div className="p-3 bg-slate-950 border border-slate-800 rounded-xl">
+                <div className="flex items-center justify-between mb-1.5">
+                  <span className="text-xs font-semibold text-slate-300">
+                    4. {isTe ? "ఆధార్ & బ్యాంక్ కాల్ లాగ్‌లను పరిశీలించండి" : "Inspect Aadhaar & Bank Call Logs in mongosh"}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => copyToClipboard("mongosh \"mongodb://localhost:27017/safeupi\" --eval \"db.safeupi_verifications.find().pretty()\"", "cmd4")}
+                    className="text-[11px] text-emerald-400 hover:text-emerald-300 flex items-center gap-1 cursor-pointer"
+                  >
+                    {copiedCmd === "cmd4" ? <Check className="w-3 h-3 text-emerald-300" /> : <Copy className="w-3 h-3" />}
+                    <span>{copiedCmd === "cmd4" ? "Copied!" : "Copy"}</span>
+                  </button>
+                </div>
+                <pre className="p-2 rounded-lg bg-slate-900 text-emerald-300 font-mono text-[11px] overflow-x-auto">
+mongosh "mongodb://localhost:27017/safeupi" --eval "db.safeupi_verifications.find().pretty()"
                 </pre>
               </div>
             </div>
